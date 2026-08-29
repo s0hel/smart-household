@@ -2,7 +2,7 @@
 
 This is the handoff doc for picking this project back up in a fresh Claude session. Read this first, then [README.md](README.md) (setup) and [technical-design.md](technical-design.md) (full architecture) as needed.
 
-**Status as of 2026-08-29:** Phase 1 / Milestone 1 is built and committed. Since then, in an uncommitted working-tree session: the recurrence engine tech-debt item is fixed, Milestone 2's first checklist item (Google Calendar OAuth connect + initial one-way sync) is built and verified end-to-end against a real Google account, and a calendar-week/day-view overflow bug was fixed. See "What changed this session" below before committing.
+**Status as of 2026-08-29:** Phase 1 / Milestone 1 is built and committed. Since then: the recurrence engine tech-debt item is fixed, Milestone 2's first checklist item (Google Calendar OAuth connect + initial one-way sync) is built and verified end-to-end against a real Google account, and two calendar week/day-view layout bugs were fixed (content overflow, then short-event legibility). All committed — see "What changed this session" below for commit-by-commit detail.
 
 ---
 
@@ -25,17 +25,19 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 
 ---
 
-## What changed this session (2026-08-29, uncommitted)
+## What changed this session (2026-08-29, all committed)
 
-- **Recurrence engine** (was tech debt, see below — now fixed): `packages/domain/src/recurrence.ts` uses `rrule` to compute whether a task is due on a given date, anchored on `task.dueAt ?? task.createdAt`. Wired into `task.list` (returns a `dueToday` flag per task) and the Dashboard's "To Do" section now filters on it. The `/tasks` management page intentionally still shows all tasks regardless of due day (it's the CRUD view). No frequency → always due (covers `ONE_TIME` tasks).
-- **Milestone 2, item 1: Google Calendar OAuth connect + initial sync — done and verified end-to-end** against a real Google account (connect → Google consent → callback → token storage → sync all worked; 27 real events landed in the `Event` table on first sync). Added:
+- **Recurrence engine** (was tech debt, see below — now fixed, commit `5f64c14`): `packages/domain/src/recurrence.ts` uses `rrule` to compute whether a task is due on a given date, anchored on `task.dueAt ?? task.createdAt`. Wired into `task.list` (returns a `dueToday` flag per task) and the Dashboard's "To Do" section now filters on it. The `/tasks` management page intentionally still shows all tasks regardless of due day (it's the CRUD view). No frequency → always due (covers `ONE_TIME` tasks).
+- **Milestone 2, item 1: Google Calendar OAuth connect + initial sync — done and verified end-to-end** against a real Google account (connect → Google consent → callback → token storage → sync all worked; 27 real events landed in the `Event` table on first sync). Commit `f0955cc`. Added:
   - `apps/app/src/app/api/calendar/google/connect` and `.../callback` route handlers (state-cookie CSRF protection, `prompt=consent`+`access_type=offline` to guarantee a refresh token).
   - `apps/app/src/server/integrations/{googleCalendar,tokenCrypto,syncGoogleCalendar}.ts` — hand-rolled `fetch`-based Google OAuth/Calendar client (no `googleapis` dependency), AES-256-GCM token encryption at rest (`CALENDAR_TOKEN_ENCRYPTION_KEY` env var — the design doc claimed encrypted tokens but the schema/code never did this before), and a one-way sync that upserts Google events into the shared `Event` table keyed on `(calendarAccountId, sourceEventId)`.
   - `calendarAccount` tRPC router (`list`/`disconnect`/`sync`) + RBAC resource (ADMIN/PARENT only).
   - "Calendar sync" card on `/family` to connect/sync/disconnect — confirmed showing "Connected · last synced ..." after a real connect.
   - Schema: added `@@unique([householdId, ownerId, provider])` on `CalendarAccount` and `@@unique([calendarAccountId, sourceEventId])` on `Event` (needed for the upsert-based sync).
   - **Not done / not yet verified**: Microsoft/Apple providers, incremental sync via push channels (needs a public HTTPS endpoint — deferred, manual "Sync now" only), two-way write-back, refresh-token-expiry retry path (the retry-once-on-fetch-failure logic in `syncGoogleCalendarAccount` hasn't hit a real expired-token case yet), and disconnect/re-connect wasn't exercised in this session.
-- **Fixed**: calendar week/day view event cards could overflow their rounded border when an event had multiple assignees or long text in a short time slot (assignee badges spilling below the card). Fix: `overflow-hidden` on `EventCard` (`packages/ui/src/components/EventCard.tsx`) so extra content clips instead of spilling — a fuller fix (e.g. showing "+N more") is possible later if it matters in practice.
+- **Fixed (two passes)**: calendar week/day view event cards looked cluttered/broken once real synced Google events (much shorter, more numerous, longer titles than the seed data) populated the grid.
+  - Pass 1 (commit `1382714`): cards could overflow their rounded border when an event had multiple assignees or long text in a short time slot (assignee badges spilling below the card) — fixed with `overflow-hidden` on `EventCard`.
+  - Pass 2 (commit `44c0da1`): overflow-hidden alone wasn't enough — short events (a few real events are only 15-45 min) rendered as an almost-invisible clipped sliver with no visible card boundary, since a full-size card layout doesn't fit in a ~15-45px absolutely-positioned slot. `WeekView`/`DayView` now pass a `dense={height < 48}` prop to `EventCard`, which renders short events as a single-line pill (truncated title, small colored dots for assignees instead of named badges, time) that stays fully contained. Also added `truncate`/`min-w-0` to the non-dense title so long titles ellipsize instead of wrapping. Verified visually against the real synced calendar data.
 - **New local-dev finding**: this repo's `packages/db/prisma/migrations/` was already committed with one migration, but `prisma migrate dev` refuses to run non-interactively (fails with "environment is non-interactive" the moment schema drift needs a new migration) — needed `prisma migrate diff --from-url ... --to-schema-datamodel ... --script` piped into a hand-written migration folder, then `prisma migrate deploy`. Fine interactively (`pnpm db:migrate` as documented) but worth knowing if scripting this.
 - **New local-dev finding**: creating the `apps/app/.env` symlink needs Developer Mode enabled or an elevated shell on Windows (`New-Item -ItemType SymbolicLink` fails with `PermissionDenied` otherwise) — copying `.env` into `apps/app/.env` works as a fallback but won't stay in sync if you edit the root `.env` later.
 
@@ -60,7 +62,7 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 
 Ref: [technical-design.md §6](technical-design.md#6-calendar-sync-engine) and [§7](technical-design.md#7-real-time-device-sync).
 
-- [x] Google Calendar OAuth connect flow (`CalendarAccount` row per connection); initial full sync — done and verified end-to-end this session against a real Google account (uncommitted — see "What changed this session")
+- [x] Google Calendar OAuth connect flow (`CalendarAccount` row per connection); initial full sync — done and verified end-to-end this session against a real Google account (commit `f0955cc` — see "What changed this session")
 - [ ] Incremental sync via Google push channels (currently manual "Sync now" only; needs a public HTTPS webhook endpoint)
 - [ ] Microsoft Graph OAuth connect + webhook sync
 - [ ] Apple/iCloud via CalDAV + app-specific password (read-only to start); poll on a Vercel Cron-equivalent interval since there's no push webhook
