@@ -4,6 +4,7 @@ export type Resource =
   | "household"
   | "familyMember"
   | "device"
+  | "calendarAccount"
   | "event"
   | "task"
   | "reward"
@@ -24,6 +25,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     household: ["create", "read", "update", "delete"],
     familyMember: ["create", "read", "update", "delete"],
     device: ["create", "read", "update", "delete"],
+    calendarAccount: ["create", "read", "update", "delete"],
     event: ["create", "read", "update", "delete"],
     task: ["create", "read", "update", "delete", "approve", "complete"],
     reward: ["create", "read", "update", "delete"],
@@ -35,6 +37,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     household: ["read"],
     familyMember: ["create", "read", "update"],
     device: ["read", "update"],
+    calendarAccount: ["create", "read", "update", "delete"],
     event: ["create", "read", "update", "delete"],
     task: ["create", "read", "update", "delete", "approve", "complete"],
     reward: ["create", "read", "update", "delete"],

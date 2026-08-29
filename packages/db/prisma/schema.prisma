@@ -138,6 +138,7 @@ model CalendarAccount {
 
   events Event[]
 
+  @@unique([householdId, ownerId, provider])
   @@index([householdId])
 }
 
@@ -167,6 +168,7 @@ model Event {
   assignees EventAssignee[]
   checklist EventChecklistItem[]
 
+  @@unique([calendarAccountId, sourceEventId])
   @@index([householdId, startAt])
   @@index([canonicalHash])
 }

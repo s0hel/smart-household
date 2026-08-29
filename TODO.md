@@ -2,7 +2,7 @@
 
 This is the handoff doc for picking this project back up in a fresh Claude session. Read this first, then [README.md](README.md) (setup) and [technical-design.md](technical-design.md) (full architecture) as needed.
 
-**Status as of 2026-08-28:** Phase 1 / Milestone 1 (per [technical-design.md §13](technical-design.md#13-implementation-roadmap)) is built, manually verified end-to-end in-browser, and committed (`git log` shows it landed as "Phase1: Add initial application structure with routing, layout, and authentication"). Working tree was clean as of this doc.
+**Status as of 2026-08-29:** Phase 1 / Milestone 1 is built and committed. Since then, in an uncommitted working-tree session: the recurrence engine tech-debt item is fixed, Milestone 2's first checklist item (Google Calendar OAuth connect + initial one-way sync) is built and verified end-to-end against a real Google account, and a calendar-week/day-view overflow bug was fixed. See "What changed this session" below before committing.
 
 ---
 
@@ -25,6 +25,22 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 
 ---
 
+## What changed this session (2026-08-29, uncommitted)
+
+- **Recurrence engine** (was tech debt, see below — now fixed): `packages/domain/src/recurrence.ts` uses `rrule` to compute whether a task is due on a given date, anchored on `task.dueAt ?? task.createdAt`. Wired into `task.list` (returns a `dueToday` flag per task) and the Dashboard's "To Do" section now filters on it. The `/tasks` management page intentionally still shows all tasks regardless of due day (it's the CRUD view). No frequency → always due (covers `ONE_TIME` tasks).
+- **Milestone 2, item 1: Google Calendar OAuth connect + initial sync — done and verified end-to-end** against a real Google account (connect → Google consent → callback → token storage → sync all worked; 27 real events landed in the `Event` table on first sync). Added:
+  - `apps/app/src/app/api/calendar/google/connect` and `.../callback` route handlers (state-cookie CSRF protection, `prompt=consent`+`access_type=offline` to guarantee a refresh token).
+  - `apps/app/src/server/integrations/{googleCalendar,tokenCrypto,syncGoogleCalendar}.ts` — hand-rolled `fetch`-based Google OAuth/Calendar client (no `googleapis` dependency), AES-256-GCM token encryption at rest (`CALENDAR_TOKEN_ENCRYPTION_KEY` env var — the design doc claimed encrypted tokens but the schema/code never did this before), and a one-way sync that upserts Google events into the shared `Event` table keyed on `(calendarAccountId, sourceEventId)`.
+  - `calendarAccount` tRPC router (`list`/`disconnect`/`sync`) + RBAC resource (ADMIN/PARENT only).
+  - "Calendar sync" card on `/family` to connect/sync/disconnect — confirmed showing "Connected · last synced ..." after a real connect.
+  - Schema: added `@@unique([householdId, ownerId, provider])` on `CalendarAccount` and `@@unique([calendarAccountId, sourceEventId])` on `Event` (needed for the upsert-based sync).
+  - **Not done / not yet verified**: Microsoft/Apple providers, incremental sync via push channels (needs a public HTTPS endpoint — deferred, manual "Sync now" only), two-way write-back, refresh-token-expiry retry path (the retry-once-on-fetch-failure logic in `syncGoogleCalendarAccount` hasn't hit a real expired-token case yet), and disconnect/re-connect wasn't exercised in this session.
+- **Fixed**: calendar week/day view event cards could overflow their rounded border when an event had multiple assignees or long text in a short time slot (assignee badges spilling below the card). Fix: `overflow-hidden` on `EventCard` (`packages/ui/src/components/EventCard.tsx`) so extra content clips instead of spilling — a fuller fix (e.g. showing "+N more") is possible later if it matters in practice.
+- **New local-dev finding**: this repo's `packages/db/prisma/migrations/` was already committed with one migration, but `prisma migrate dev` refuses to run non-interactively (fails with "environment is non-interactive" the moment schema drift needs a new migration) — needed `prisma migrate diff --from-url ... --to-schema-datamodel ... --script` piped into a hand-written migration folder, then `prisma migrate deploy`. Fine interactively (`pnpm db:migrate` as documented) but worth knowing if scripting this.
+- **New local-dev finding**: creating the `apps/app/.env` symlink needs Developer Mode enabled or an elevated shell on Windows (`New-Item -ItemType SymbolicLink` fails with `PermissionDenied` otherwise) — copying `.env` into `apps/app/.env` works as a fallback but won't stay in sync if you edit the root `.env` later.
+
+---
+
 ## What's actually built (Milestone 1)
 
 - Turborepo monorepo: `apps/app` (Next.js 15 App Router) + `packages/{db,domain,ui,config}`
@@ -44,7 +60,8 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 
 Ref: [technical-design.md §6](technical-design.md#6-calendar-sync-engine) and [§7](technical-design.md#7-real-time-device-sync).
 
-- [ ] Google Calendar OAuth connect flow (`CalendarAccount` row per connection); initial full sync + incremental via Google push channels
+- [x] Google Calendar OAuth connect flow (`CalendarAccount` row per connection); initial full sync — done and verified end-to-end this session against a real Google account (uncommitted — see "What changed this session")
+- [ ] Incremental sync via Google push channels (currently manual "Sync now" only; needs a public HTTPS webhook endpoint)
 - [ ] Microsoft Graph OAuth connect + webhook sync
 - [ ] Apple/iCloud via CalDAV + app-specific password (read-only to start); poll on a Vercel Cron-equivalent interval since there's no push webhook
 - [ ] `canonicalHash` dedup logic for events arriving via multiple connected calendars
@@ -74,7 +91,6 @@ Ref: [technical-design.md §5](technical-design.md#5-auth--permissions) (device 
 
 None of these block M2, but worth fixing opportunistically:
 
-- **No recurrence engine.** `Task.frequency` stores an RRULE-ish string (e.g. `FREQ=DAILY`) but nothing actually expands occurrences — the dashboard just shows all active tasks with "completed today" status regardless of whether today is actually a due day for weekly/custom-frequency tasks. Needs a real occurrence calculator before Chores are trustworthy beyond the demo data.
 - **No automated tests.** No test runner is set up at all (no Vitest/Jest/Playwright). Given RBAC correctness is security-sensitive, at minimum the `packages/domain/rbac.ts` capability table and the tRPC ownership checks (`task.setCompletion`) deserve unit/integration tests before this grows further.
 - **Row-level security not applied.** Household scoping is enforced entirely in the tRPC middleware layer (`apps/app/src/server/trpc/trpc.ts`). Fine for now; Postgres RLS was flagged as Phase 2+ hardening in the design doc.
 - **`packages/domain`, `packages/ui`, `packages/db` have no lint script**, only `apps/app` does. Not urgent since they're pure TS with no framework-specific rules, but worth adding eslint configs if the packages grow.
