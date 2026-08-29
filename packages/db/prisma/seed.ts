@@ -1,0 +1,225 @@
+import { PrismaClient } from "@prisma/client";
+import { hashPassword, hashPin } from "@household/domain";
+
+const prisma = new PrismaClient();
+
+/** Returns the Date for `daysFromMonday` days after this week's Monday, at `hour`:`minute` local time. */
+function thisWeek(daysFromMonday: number, hour: number, minute = 0): Date {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+  const target = new Date(monday);
+  target.setDate(monday.getDate() + daysFromMonday);
+  target.setHours(hour, minute, 0, 0);
+  return target;
+}
+
+async function main() {
+  console.log("Seeding demo household...");
+
+  const household = await prisma.household.create({
+    data: {
+      name: "The Rahman Household",
+      timezone: "America/New_York",
+    },
+  });
+
+  const [sohel, partner, imran, zara] = await Promise.all([
+    prisma.user.create({
+      data: {
+        householdId: household.id,
+        name: "Sohel",
+        email: "sohel@example.com",
+        role: "ADMIN",
+        colorHex: "#3B82F6",
+        passwordHash: await hashPassword("password123"),
+      },
+    }),
+    prisma.user.create({
+      data: {
+        householdId: household.id,
+        name: "Partner",
+        email: "partner@example.com",
+        role: "PARENT",
+        colorHex: "#22C55E",
+        passwordHash: await hashPassword("password123"),
+      },
+    }),
+    prisma.user.create({
+      data: {
+        householdId: household.id,
+        name: "Imran",
+        role: "CHILD",
+        colorHex: "#A855F7",
+        pinHash: await hashPin("1234"),
+      },
+    }),
+    prisma.user.create({
+      data: {
+        householdId: household.id,
+        name: "Zara",
+        role: "CHILD",
+        colorHex: "#F97316",
+        pinHash: await hashPin("5678"),
+      },
+    }),
+  ]);
+
+  // --- Events -----------------------------------------------------------
+  const soccer = await prisma.event.create({
+    data: {
+      householdId: household.id,
+      title: "Soccer Practice",
+      startAt: thisWeek(1, 17, 30), // Tuesday 5:30pm
+      endAt: thisWeek(1, 19, 0),
+      location: "Memorial Park",
+      colorHex: imran.colorHex,
+      travelTimeMinutes: 18,
+      assignees: { create: [{ userId: imran.id }] },
+      checklist: {
+        create: [
+          { label: "Soccer shoes", order: 0 },
+          { label: "Water", order: 1 },
+          { label: "Jersey", order: 2 },
+        ],
+      },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      householdId: household.id,
+      title: "Dentist",
+      startAt: thisWeek(4, 17, 0), // Friday 5:00pm
+      endAt: thisWeek(4, 17, 45),
+      location: "Bright Smiles Dental",
+      colorHex: zara.colorHex,
+      assignees: { create: [{ userId: zara.id }] },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      householdId: household.id,
+      title: "Dinner",
+      startAt: thisWeek(4, 18, 30),
+      endAt: thisWeek(4, 19, 30),
+      colorHex: "#EAB308",
+      assignees: { create: [{ userId: sohel.id }, { userId: partner.id }, { userId: imran.id }, { userId: zara.id }] },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      householdId: household.id,
+      title: "Birthday Party",
+      startAt: thisWeek(5, 10, 0), // Saturday 10:00am
+      endAt: thisWeek(5, 12, 0),
+      colorHex: "#EC4899",
+      assignees: { create: [{ userId: imran.id }, { userId: zara.id }] },
+    },
+  });
+
+  // --- Rewards ------------------------------------------------------------
+  const [gamingTime, pickDinner, allowance, outing] = await Promise.all([
+    prisma.reward.create({
+      data: { householdId: household.id, name: "30 minutes extra gaming", costPoints: 50 },
+    }),
+    prisma.reward.create({
+      data: { householdId: household.id, name: "Pick Friday dinner", costPoints: 100 },
+    }),
+    prisma.reward.create({
+      data: { householdId: household.id, name: "$10 allowance", costPoints: 200 },
+    }),
+    prisma.reward.create({
+      data: { householdId: household.id, name: "Special outing", costPoints: 500 },
+    }),
+  ]);
+  void gamingTime;
+  void pickDinner;
+  void allowance;
+  void outing;
+
+  // --- Tasks / chores -------------------------------------------------------
+  await prisma.task.create({
+    data: {
+      householdId: household.id,
+      title: "Take trash out",
+      type: "CHORE",
+      assigneeId: imran.id,
+      frequency: "FREQ=DAILY",
+      points: 2,
+      dueAt: thisWeek(4, 20, 0),
+    },
+  });
+
+  await prisma.task.create({
+    data: {
+      householdId: household.id,
+      title: "Clean room",
+      type: "CHORE",
+      assigneeId: imran.id,
+      frequency: "FREQ=WEEKLY",
+      points: 10,
+      dueAt: thisWeek(6, 20, 0),
+    },
+  });
+
+  await prisma.task.create({
+    data: {
+      householdId: household.id,
+      title: "Feed dog",
+      type: "CHORE",
+      assigneeId: zara.id,
+      frequency: "FREQ=DAILY",
+      points: 3,
+      dueAt: thisWeek(4, 8, 0),
+    },
+  });
+
+  await prisma.task.create({
+    data: {
+      householdId: household.id,
+      title: "Grocery shopping",
+      type: "ONE_TIME",
+      assigneeId: sohel.id,
+      dueAt: thisWeek(4, 18, 0),
+      points: 0,
+    },
+  });
+
+  // --- Lists ---------------------------------------------------------------
+  await prisma.list.create({
+    data: {
+      householdId: household.id,
+      name: "Grocery List",
+      type: "GROCERY",
+      items: {
+        create: [
+          { label: "Bananas", category: "Produce", order: 0 },
+          { label: "Lettuce", category: "Produce", order: 1 },
+          { label: "Tomatoes", category: "Produce", order: 2 },
+          { label: "Milk", category: "Dairy", order: 3 },
+          { label: "Cheese", category: "Dairy", order: 4 },
+          { label: "Chicken breast", category: "Meat", order: 5 },
+          { label: "Rice", category: "Pantry", order: 6 },
+          { label: "Pasta", category: "Pantry", order: 7 },
+        ],
+      },
+    },
+  });
+
+  console.log(`Seeded household "${household.name}" (${household.id})`);
+  console.log(`Sign in as ${sohel.email} / password123`);
+  console.log(`Event seeded: ${soccer.title}`);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

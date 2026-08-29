@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  PARENT
+  CHILD
+  GUEST
+  READONLY
+}
+
+enum TaskType {
+  ONE_TIME
+  RECURRING
+  CHORE
+  ROUTINE
+}
+
+enum CalendarProvider {
+  GOOGLE
+  MICROSOFT
+  APPLE_CALDAV
+}
+
+enum RedemptionStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum ListType {
+  GROCERY
+  CUSTOM
+}
+
+// ---------------------------------------------------------------------------
+// Core tenancy
+// ---------------------------------------------------------------------------
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("America/New_York")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  devices          Device[]
+  calendarAccounts CalendarAccount[]
+  events           Event[]
+  tasks            Task[]
+  rewards          Reward[]
+  lists            List[]
+  auditLogs        AuditLog[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  name      String
+  email     String?  @unique
+  role      Role
+  colorHex  String   @default("#3B82F6")
+  avatarUrl String?
+  birthdate DateTime?
+
+  // Adults authenticate with a password; children switch profiles via a PIN
+  // scoped to an already-authenticated household session (see auth design).
+  passwordHash String?
+  pinHash      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calendarAccounts   CalendarAccount[]
+  assignedEvents     EventAssignee[]
+  assignedTasks      Task[]             @relation("TaskAssignee")
+  choreCompletions   ChoreCompletion[]  @relation("CompletedBy")
+  approvedCompletions ChoreCompletion[] @relation("ApprovedBy")
+  redemptions        RewardRedemption[] @relation("RedeemedBy")
+  approvedRedemptions RewardRedemption[] @relation("RedemptionApprovedBy")
+  auditLogs          AuditLog[]
+
+  @@index([householdId])
+}
+
+model Device {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  name         String
+  pairingCode  String?   @unique
+  deviceToken  String?   @unique
+  pairedAt     DateTime?
+  lastSeenAt   DateTime?
+  settings     Json      @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([householdId])
+}
+
+// ---------------------------------------------------------------------------
+// Calendar
+// ---------------------------------------------------------------------------
+
+model CalendarAccount {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+
+  provider       CalendarProvider
+  externalId     String?
+  accessToken    String?
+  refreshToken   String?
+  syncCursor     String?
+  lastSyncedAt   DateTime?
+  status         String           @default("disconnected")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+
+  @@index([householdId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  title       String
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean   @default(false)
+  location    String?
+  description String?
+  colorHex    String    @default("#3B82F6")
+  recurrenceRule String?
+  travelTimeMinutes Int?
+
+  calendarAccount   CalendarAccount? @relation(fields: [calendarAccountId], references: [id], onDelete: SetNull)
+  calendarAccountId String?
+  sourceEventId     String?
+  canonicalHash     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignees EventAssignee[]
+  checklist EventChecklistItem[]
+
+  @@index([householdId, startAt])
+  @@index([canonicalHash])
+}
+
+model EventAssignee {
+  id      String @id @default(cuid())
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+
+  @@unique([eventId, userId])
+}
+
+model EventChecklistItem {
+  id      String  @id @default(cuid())
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  label   String
+  checked Boolean @default(false)
+  order   Int     @default(0)
+}
+
+// ---------------------------------------------------------------------------
+// Tasks, chores, rewards
+// ---------------------------------------------------------------------------
+
+model Task {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  title        String
+  type         TaskType
+  assignee     User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId   String?
+  frequency    String?
+  dueAt        DateTime?
+  points       Int       @default(0)
+  reward       Reward?   @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  rewardId     String?
+  active       Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  completions ChoreCompletion[]
+
+  @@index([householdId])
+  @@index([assigneeId])
+}
+
+model ChoreCompletion {
+  id      String @id @default(cuid())
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId  String
+
+  occurrenceDate DateTime
+  completedAt    DateTime @default(now())
+  completedBy    User     @relation("CompletedBy", fields: [completedById], references: [id], onDelete: Cascade)
+  completedById  String
+  pointsAwarded  Int      @default(0)
+  approvedAt     DateTime?
+  approvedBy     User?    @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedById   String?
+
+  @@unique([taskId, occurrenceDate])
+  @@index([completedById])
+}
+
+model Reward {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  name              String
+  costPoints        Int
+  description       String?
+  active            Boolean @default(true)
+  requiresApproval  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks       Task[]
+  redemptions RewardRedemption[]
+
+  @@index([householdId])
+}
+
+model RewardRedemption {
+  id       String @id @default(cuid())
+  reward   Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  rewardId String
+  user     User   @relation("RedeemedBy", fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  status       RedemptionStatus @default(PENDING)
+  requestedAt  DateTime         @default(now())
+  decidedAt    DateTime?
+  decidedBy    User?            @relation("RedemptionApprovedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedById  String?
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Lists
+// ---------------------------------------------------------------------------
+
+model List {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  name String
+  type ListType @default(CUSTOM)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items ListItem[]
+
+  @@index([householdId])
+}
+
+model ListItem {
+  id     String @id @default(cuid())
+  list   List   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId String
+
+  label     String
+  quantity  String?
+  category  String?
+  assigneeId String?
+  dueDate   DateTime?
+  notes     String?
+  checked   Boolean  @default(false)
+  order     Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listId])
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  actor       User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId     String?
+
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([householdId, createdAt])
+}
