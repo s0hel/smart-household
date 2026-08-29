@@ -17,20 +17,20 @@ export function WeekView({
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
   return (
-    <div className="overflow-auto rounded-2xl border border-gray-200 bg-white">
+    <div className="overflow-auto rounded-2xl border border-ink-200 bg-white">
       <div className="grid grid-cols-[4rem_repeat(7,minmax(9rem,1fr))]">
         <div />
         {days.map((day) => (
-          <div key={day.toISOString()} className="border-b border-l border-gray-100 px-2 py-2 text-center">
-            <p className="text-xs font-medium uppercase text-gray-400">{format(day, "EEE")}</p>
-            <p className="text-sm font-semibold text-gray-900">{format(day, "d")}</p>
+          <div key={day.toISOString()} className="border-b border-l border-ink-100 px-2 py-2 text-center">
+            <p className="text-xs font-medium uppercase text-ink-400">{format(day, "EEE")}</p>
+            <p className="text-sm font-semibold text-ink-900">{format(day, "d")}</p>
           </div>
         ))}
 
         <div className="col-span-full grid grid-cols-[4rem_repeat(7,minmax(9rem,1fr))]">
           <div>
             {hoursOfDay().map((hour) => (
-              <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-gray-50 pr-2 text-right text-xs text-gray-400">
+              <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50 pr-2 text-right text-xs text-ink-400">
                 {hour % 12 === 0 ? 12 : hour % 12}
                 {hour < 12 ? "am" : "pm"}
               </div>
@@ -39,9 +39,9 @@ export function WeekView({
           {days.map((day) => {
             const dayEvents = eventsOnDay(events, day);
             return (
-              <div key={day.toISOString()} className="relative border-l border-gray-100">
+              <div key={day.toISOString()} className="relative border-l border-ink-100">
                 {hoursOfDay().map((hour) => (
-                  <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-gray-50" />
+                  <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
                 ))}
                 {dayEvents.map((event) => {
                   const { top, height } = eventPosition(event);

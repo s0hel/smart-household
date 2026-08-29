@@ -22,7 +22,7 @@ function RewardForm({ onClose }: { onClose: () => void }) {
 
   return (
     <form
-      className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4"
+      className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4"
       onSubmit={(e) => {
         e.preventDefault();
         createReward.mutate({ name, costPoints, requiresApproval });
@@ -45,12 +45,12 @@ function RewardForm({ onClose }: { onClose: () => void }) {
           />
         </div>
       </div>
-      <label className="flex items-center gap-2 text-sm text-gray-600">
+      <label className="flex items-center gap-2 text-sm text-ink-600">
         <input
           type="checkbox"
           checked={requiresApproval}
           onChange={(e) => setRequiresApproval(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded border-ink-300"
         />
         Requires parent approval
       </label>
@@ -109,15 +109,15 @@ export function RewardsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Rewards</h1>
-        <div className="rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700">
+        <h1 className="font-display text-2xl italic text-sapphire-800">Rewards</h1>
+        <div className="rounded-full bg-gold-50 px-4 py-1.5 text-sm font-semibold text-gold-700">
           {myBalance} points
         </div>
       </div>
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">Catalog</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">Catalog</h2>
           {canManageRewards && !showRewardForm && (
             <Button size="sm" variant="secondary" onClick={() => setShowRewardForm(true)}>
               + Add reward
@@ -143,8 +143,8 @@ export function RewardsPage() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">{reward.costPoints} points</p>
-                  {reward.description && <p className="text-sm text-gray-500">{reward.description}</p>}
+                  <p className="text-sm font-medium text-ink-700">{reward.costPoints} points</p>
+                  {reward.description && <p className="text-sm text-ink-500">{reward.description}</p>}
                   <Button
                     size="sm"
                     disabled={!affordable || redeem.isPending}
@@ -156,20 +156,20 @@ export function RewardsPage() {
               </Card>
             );
           })}
-          {rewards.length === 0 && <p className="text-sm text-gray-400">No rewards set up yet.</p>}
+          {rewards.length === 0 && <p className="text-sm text-ink-400">No rewards set up yet.</p>}
         </div>
       </section>
 
       {canApprove && pending.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">Pending approval</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-400">Pending approval</h2>
           <div className="space-y-2">
             {pending.map((redemption) => (
               <Card key={redemption.id}>
                 <CardContent className="flex items-center justify-between pt-4">
                   <div className="flex items-center gap-3">
                     <PersonBadge person={toFamilyMemberView(redemption.user)} size="sm" />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-ink-700">
                       wants <strong>{redemption.reward.name}</strong> ({redemption.reward.costPoints} pts · has{" "}
                       {balanceFor(redemption.userId)})
                     </span>
@@ -191,13 +191,14 @@ export function RewardsPage() {
 
       {decided.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">Recent activity</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-400">Recent activity</h2>
           <div className="space-y-1.5">
             {decided.map((redemption) => (
-              <div key={redemption.id} className="flex items-center gap-2 text-sm text-gray-500">
+              <div key={redemption.id} className="flex items-center gap-2 text-sm text-ink-500">
                 <PersonBadge person={toFamilyMemberView(redemption.user)} size="sm" showName={false} />
                 <span>
-                  {redemption.user.name} — {redemption.reward.name} —{" "}
+                  <span style={{ color: redemption.user.colorHex }}>{redemption.user.name}</span> —{" "}
+                  {redemption.reward.name} —{" "}
                   <span className={redemption.status === "APPROVED" ? "text-green-600" : "text-red-500"}>
                     {redemption.status.toLowerCase()}
                   </span>

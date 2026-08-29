@@ -15,10 +15,10 @@ export function DayView({
   const dayEvents = eventsOnDay(events, day);
 
   return (
-    <div className="flex overflow-y-auto rounded-2xl border border-gray-200 bg-white">
-      <div className="w-16 shrink-0 border-r border-gray-100">
+    <div className="flex overflow-y-auto rounded-2xl border border-ink-200 bg-white">
+      <div className="w-16 shrink-0 border-r border-ink-100">
         {hoursOfDay().map((hour) => (
-          <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-gray-50 pr-2 text-right text-xs text-gray-400">
+          <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50 pr-2 text-right text-xs text-ink-400">
             {hour % 12 === 0 ? 12 : hour % 12}
             {hour < 12 ? "am" : "pm"}
           </div>
@@ -26,7 +26,7 @@ export function DayView({
       </div>
       <div className="relative flex-1">
         {hoursOfDay().map((hour) => (
-          <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-gray-50" />
+          <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
         ))}
         {dayEvents.map((event) => {
           const { top, height } = eventPosition(event);
@@ -43,7 +43,7 @@ export function DayView({
           );
         })}
         {dayEvents.length === 0 && (
-          <p className="absolute inset-x-0 top-4 text-center text-sm text-gray-400">Nothing scheduled today.</p>
+          <p className="absolute inset-x-0 top-4 text-center text-sm text-ink-400">Nothing scheduled today.</p>
         )}
       </div>
     </div>

@@ -34,7 +34,7 @@ export function EventCard({
         )}
         style={{ borderLeftColor: event.colorHex }}
       >
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-900">{event.title}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-900">{event.title}</span>
         {event.assignees.length > 0 && (
           <span className="flex shrink-0 -space-x-1">
             {event.assignees.slice(0, 4).map((person) => (
@@ -46,7 +46,7 @@ export function EventCard({
             ))}
           </span>
         )}
-        <span className="shrink-0 whitespace-nowrap text-[10px] text-gray-400">{formatTimeRange(event)}</span>
+        <span className="shrink-0 whitespace-nowrap text-[10px] text-ink-400">{formatTimeRange(event)}</span>
       </button>
     );
   }
@@ -63,13 +63,13 @@ export function EventCard({
       style={{ borderLeftColor: event.colorHex }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={cn("min-w-0 truncate font-semibold text-gray-900", compact ? "text-sm" : "text-base")}>
+        <span className={cn("min-w-0 truncate font-semibold text-ink-900", compact ? "text-sm" : "text-base")}>
           {event.title}
         </span>
-        <span className="whitespace-nowrap text-xs text-gray-500">{formatTimeRange(event)}</span>
+        <span className="whitespace-nowrap text-xs text-ink-500">{formatTimeRange(event)}</span>
       </div>
       {!compact && (event.location || event.travelTimeMinutes) && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-ink-500">
           {event.location && <span>📍 {event.location}</span>}
           {event.travelTimeMinutes != null && <span className="ml-2">🚗 {event.travelTimeMinutes} min drive</span>}
         </div>
@@ -82,9 +82,9 @@ export function EventCard({
         </div>
       )}
       {!compact && event.checklist.length > 0 && (
-        <ul className="mt-1 space-y-0.5 text-xs text-gray-600">
+        <ul className="mt-1 space-y-0.5 text-xs text-ink-600">
           {event.checklist.map((item) => (
-            <li key={item.id} className={cn(item.checked && "text-gray-400 line-through")}>
+            <li key={item.id} className={cn(item.checked && "text-ink-400 line-through")}>
               ☑ {item.label}
             </li>
           ))}

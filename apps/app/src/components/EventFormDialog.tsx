@@ -52,7 +52,7 @@ export function EventFormDialog({
     endAt: toLocalInputValue(end),
     location: editing?.location ?? "",
     assigneeIds: editing?.assignees.map((a) => a.userId) ?? [],
-    colorHex: editing?.colorHex ?? "#3B82F6",
+    colorHex: editing?.colorHex ?? "#2851A3",
   });
 
   async function onSubmit(e: React.FormEvent) {
@@ -90,8 +90,8 @@ export function EventFormDialog({
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">{values.id ? "Edit event" : "New event"}</h2>
+      <div className="w-full max-w-md rounded-2xl border-t-4 border-gold-400 bg-white p-6 shadow-xl">
+        <h2 className="mb-4 font-display text-lg italic text-sapphire-800">{values.id ? "Edit event" : "New event"}</h2>
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <Label htmlFor="title">Title</Label>

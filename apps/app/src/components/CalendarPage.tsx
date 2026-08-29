@@ -52,7 +52,7 @@ export function CalendarPage() {
           <Button size="sm" variant="secondary" onClick={() => navigate(-1)} disabled={mode === "agenda"}>
             ←
           </Button>
-          <span className="min-w-[10rem] text-center text-sm font-medium text-gray-700">
+          <span className="min-w-[10rem] text-center text-sm font-medium text-ink-700">
             {mode === "month" ? format(anchorDate, "MMMM yyyy") : format(anchorDate, "MMM d, yyyy")}
           </span>
           <Button size="sm" variant="secondary" onClick={() => navigate(1)} disabled={mode === "agenda"}>
@@ -63,13 +63,13 @@ export function CalendarPage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-gray-200 p-0.5">
+          <div className="flex rounded-lg border border-ink-200 p-0.5">
             {MODES.map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
                 className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${
-                  mode === m ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
+                  mode === m ? "bg-sapphire-600 text-white" : "text-ink-600 hover:bg-ink-100"
                 }`}
               >
                 {m}

@@ -57,16 +57,16 @@ export function ProfileSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-xl p-2 text-left hover:bg-gray-100"
+        className="flex w-full items-center gap-2 rounded-xl p-2 text-left hover:bg-ink-100"
       >
         {activeProfile && <PersonBadge person={toFamilyMemberView(activeProfile)} />}
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 z-10 mb-2 w-64 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+        <div className="absolute bottom-full left-0 z-10 mb-2 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg">
           {pinTarget ? (
             <form onSubmit={submitPin} className="space-y-2 p-2">
-              <p className="text-sm font-medium text-gray-700">Enter PIN</p>
+              <p className="text-sm font-medium text-ink-700">Enter PIN</p>
               <Input
                 autoFocus
                 inputMode="numeric"
@@ -93,17 +93,17 @@ export function ProfileSwitcher() {
                       type="button"
                       onClick={() => selectMember(member.id, member.role)}
                       disabled={member.role !== "CHILD" && member.id !== session.user.id}
-                      className="flex w-full items-center justify-between rounded-lg p-2 text-left hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex w-full items-center justify-between rounded-lg p-2 text-left hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <PersonBadge person={toFamilyMemberView(member)} />
                       {member.id === session.user.activeProfileId && (
-                        <span className="text-xs text-blue-600">Active</span>
+                        <span className="text-xs text-sapphire-600">Active</span>
                       )}
                     </button>
                   </li>
                 ))}
               </ul>
-              <div className="mt-2 border-t border-gray-100 pt-2">
+              <div className="mt-2 border-t border-ink-100 pt-2">
                 <Button size="sm" variant="ghost" className="w-full justify-start" onClick={() => signOut()}>
                   Sign out
                 </Button>

@@ -53,7 +53,7 @@ export function ListsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Lists</h1>
+        <h1 className="font-display text-2xl italic text-sapphire-800">Lists</h1>
         {canCreateList && (
           <form
             className="flex gap-2"
@@ -86,7 +86,7 @@ export function ListsPage() {
             )}
           </div>
         ))}
-        {lists.length === 0 && <p className="text-sm text-gray-400">No lists yet.</p>}
+        {lists.length === 0 && <p className="text-sm text-ink-400">No lists yet.</p>}
       </div>
     </div>
   );

@@ -45,12 +45,12 @@ function AssignMealPopover({
   const [customTitle, setCustomTitle] = React.useState("");
 
   return (
-    <div className="absolute z-10 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
-      <p className="mb-2 text-xs font-semibold text-gray-500">
+    <div className="absolute z-10 mt-1 w-56 rounded-xl border border-ink-200 bg-white p-3 shadow-lg">
+      <p className="mb-2 text-xs font-semibold text-ink-500">
         {MEAL_LABELS[mealType]} · {format(date, "EEE MMM d")}
       </p>
       <select
-        className="mb-2 h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
+        className="mb-2 h-9 w-full rounded-lg border border-ink-300 px-2 text-sm"
         value={recipeId}
         onChange={(e) => {
           setRecipeId(e.target.value);
@@ -130,7 +130,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-2">
           <Label htmlFor="recipe-name">Name</Label>
@@ -184,7 +184,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={() => setIngredients((rows) => [...rows, { name: "", quantity: "", category: "" }])}
-          className="mt-2 text-xs font-medium text-blue-600 hover:underline"
+          className="mt-2 text-xs font-medium text-sapphire-600 hover:underline"
         >
           + Add ingredient
         </button>
@@ -234,12 +234,12 @@ export function MealPlanPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Meal Plan</h1>
+        <h1 className="font-display text-2xl italic text-sapphire-800">Meal Plan</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setWeekStart((d) => addWeeks(d, -1))}>
             ← Prev
           </Button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-ink-600">
             {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
           </span>
           <Button variant="secondary" size="sm" onClick={() => setWeekStart((d) => addWeeks(d, 1))}>
@@ -253,19 +253,19 @@ export function MealPlanPage() {
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr>
-                <th className="w-24 text-left text-xs font-semibold uppercase text-gray-400">Meal</th>
+                <th className="w-24 text-left text-xs font-semibold uppercase text-ink-400">Meal</th>
                 {days.map((day) => (
-                  <th key={day.toISOString()} className="px-1 pb-2 text-center text-xs font-semibold text-gray-600">
+                  <th key={day.toISOString()} className="px-1 pb-2 text-center text-xs font-semibold text-ink-600">
                     {format(day, "EEE")}
-                    <div className="font-normal text-gray-400">{format(day, "MMM d")}</div>
+                    <div className="font-normal text-ink-400">{format(day, "MMM d")}</div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {MEAL_TYPES.map((mealType) => (
-                <tr key={mealType} className="border-t border-gray-100">
-                  <td className="py-2 text-xs font-semibold uppercase text-gray-400">{MEAL_LABELS[mealType]}</td>
+                <tr key={mealType} className="border-t border-ink-100">
+                  <td className="py-2 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</td>
                   {days.map((day) => {
                     const entry = entryFor(day, mealType);
                     const isEditing =
@@ -273,7 +273,7 @@ export function MealPlanPage() {
                     return (
                       <td key={day.toISOString()} className="relative px-1 py-1 align-top">
                         {entry ? (
-                          <div className="group relative rounded-lg bg-blue-50 px-2 py-1.5 text-xs text-blue-900">
+                          <div className="group relative rounded-lg bg-sapphire-50 px-2 py-1.5 text-xs text-sapphire-900">
                             {entry.recipe?.name ?? entry.customTitle}
                             {canManage && (
                               <button
@@ -288,7 +288,7 @@ export function MealPlanPage() {
                           canManage && (
                             <button
                               onClick={() => setEditingCell({ date: day, mealType })}
-                              className="flex h-9 w-full items-center justify-center rounded-lg text-gray-300 hover:bg-gray-50 hover:text-gray-500"
+                              className="flex h-9 w-full items-center justify-center rounded-lg text-ink-300 hover:bg-ink-50 hover:text-ink-500"
                             >
                               +
                             </button>
@@ -327,7 +327,7 @@ export function MealPlanPage() {
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">Recipes</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">Recipes</h2>
           {canManage && !showRecipeForm && (
             <Button size="sm" variant="secondary" onClick={() => setShowRecipeForm(true)}>
               + Add recipe
@@ -367,19 +367,19 @@ function RecipeList() {
             )}
           </CardHeader>
           <CardContent>
-            {recipe.servings && <p className="mb-1 text-xs text-gray-400">Serves {recipe.servings}</p>}
-            <ul className="space-y-0.5 text-sm text-gray-600">
+            {recipe.servings && <p className="mb-1 text-xs text-ink-400">Serves {recipe.servings}</p>}
+            <ul className="space-y-0.5 text-sm text-ink-600">
               {recipe.ingredients.map((ing) => (
                 <li key={ing.id}>
                   {ing.name}
-                  {ing.quantity && <span className="text-gray-400"> · {ing.quantity}</span>}
+                  {ing.quantity && <span className="text-ink-400"> · {ing.quantity}</span>}
                 </li>
               ))}
             </ul>
           </CardContent>
         </Card>
       ))}
-      {recipes.length === 0 && <p className="text-sm text-gray-400">No recipes yet.</p>}
+      {recipes.length === 0 && <p className="text-sm text-ink-400">No recipes yet.</p>}
     </div>
   );
 }

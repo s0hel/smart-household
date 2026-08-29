@@ -22,7 +22,7 @@ export function ListCard({
       <CardHeader>
         <CardTitle>{list.name}</CardTitle>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ink-500">
             {list.items.filter((i) => i.checked).length}/{list.items.length}
           </span>
           {onDelete && (
@@ -35,7 +35,7 @@ export function ListCard({
       <CardContent className="space-y-3">
         {categories.map((category) => (
           <div key={category}>
-            {list.type === "GROCERY" && <p className="mb-1 text-xs font-semibold uppercase text-gray-400">{category}</p>}
+            {list.type === "GROCERY" && <p className="mb-1 text-xs font-semibold uppercase text-ink-400">{category}</p>}
             <ul className="space-y-1.5">
               {list.items
                 .filter((item) => (item.category ?? "Other") === category)
@@ -45,16 +45,16 @@ export function ListCard({
                       checked={item.checked}
                       onChange={(e) => onToggleItem?.(item.id, e.target.checked)}
                     />
-                    <span className={cn("text-sm text-gray-800", item.checked && "text-gray-400 line-through")}>
+                    <span className={cn("text-sm text-ink-800", item.checked && "text-ink-400 line-through")}>
                       {item.label}
-                      {item.quantity && <span className="text-gray-400"> · {item.quantity}</span>}
+                      {item.quantity && <span className="text-ink-400"> · {item.quantity}</span>}
                     </span>
                   </li>
                 ))}
             </ul>
           </div>
         ))}
-        {list.items.length === 0 && <p className="text-sm text-gray-400">No items yet.</p>}
+        {list.items.length === 0 && <p className="text-sm text-ink-400">No items yet.</p>}
       </CardContent>
     </Card>
   );

@@ -25,8 +25,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-8 shadow-sm">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Create your household</h1>
+    <div className="rounded-2xl border-t-4 border-gold-400 bg-white p-8 shadow-sm">
+      <h1 className="mb-6 font-display text-2xl italic text-sapphire-800">Create your household</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="householdName">Household name</Label>
@@ -62,9 +62,9 @@ export default function SignUpPage() {
           {signUp.isPending ? "Creating..." : "Create household"}
         </Button>
       </form>
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-4 text-center text-sm text-ink-500">
         Already have a household?{" "}
-        <a href="/sign-in" className="font-medium text-blue-600 hover:underline">
+        <a href="/sign-in" className="font-medium text-sapphire-600 hover:underline">
           Sign in
         </a>
       </p>

@@ -30,7 +30,11 @@ export function PersonBadge({
           initial
         )}
       </span>
-      {showName && <span className="text-sm font-medium text-gray-700">{person.name}</span>}
+      {showName && (
+        <span className="text-sm font-medium" style={{ color: person.colorHex }}>
+          {person.name}
+        </span>
+      )}
     </span>
   );
 }

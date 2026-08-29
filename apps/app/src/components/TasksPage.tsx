@@ -35,10 +35,10 @@ export function TasksPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Tasks & Chores</h1>
+      <h1 className="font-display text-2xl italic text-sapphire-800">Tasks &amp; Chores</h1>
 
       {canManage && (
-        <form onSubmit={onCreate} className="flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+        <form onSubmit={onCreate} className="flex flex-wrap items-end gap-3 rounded-2xl border border-ink-200 bg-white p-4">
           <div className="flex-1">
             <Label htmlFor="task-title">Title</Label>
             <Input id="task-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -47,7 +47,7 @@ export function TasksPage() {
             <Label htmlFor="task-type">Type</Label>
             <select
               id="task-type"
-              className="h-10 rounded-lg border border-gray-300 px-2 text-sm"
+              className="h-10 rounded-lg border border-ink-300 px-2 text-sm"
               value={type}
               onChange={(e) => setType(e.target.value as typeof type)}
             >
@@ -61,7 +61,7 @@ export function TasksPage() {
             <Label htmlFor="task-assignee">Assignee</Label>
             <select
               id="task-assignee"
-              className="h-10 rounded-lg border border-gray-300 px-2 text-sm"
+              className="h-10 rounded-lg border border-ink-300 px-2 text-sm"
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
             >
@@ -105,7 +105,7 @@ export function TasksPage() {
             )}
           </div>
         ))}
-        {tasks.length === 0 && <p className="text-sm text-gray-400">No tasks yet.</p>}
+        {tasks.length === 0 && <p className="text-sm text-ink-400">No tasks yet.</p>}
       </div>
     </div>
   );

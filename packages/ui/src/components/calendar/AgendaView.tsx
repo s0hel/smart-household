@@ -22,14 +22,14 @@ export function AgendaView({
   }
 
   if (groups.length === 0) {
-    return <p className="p-6 text-center text-sm text-gray-400">No upcoming events.</p>;
+    return <p className="p-6 text-center text-sm text-ink-400">No upcoming events.</p>;
   }
 
   return (
     <div className="space-y-6">
       {groups.map((group) => (
         <div key={group.day.toISOString()}>
-          <p className="mb-2 text-sm font-semibold text-gray-500">{format(group.day, "EEEE, MMMM d")}</p>
+          <p className="mb-2 text-sm font-semibold text-ink-500">{format(group.day, "EEEE, MMMM d")}</p>
           <div className="space-y-2">
             {group.events.map((event) => (
               <EventCard key={event.id} event={event} onClick={() => onEventClick?.(event)} />
