@@ -25,7 +25,7 @@ export function EventCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col gap-1 rounded-xl border-l-4 bg-white p-3 text-left shadow-sm transition hover:shadow-md",
+        "flex w-full flex-col gap-1 overflow-hidden rounded-xl border-l-4 bg-white p-3 text-left shadow-sm transition hover:shadow-md",
         compact && "p-2",
         className,
       )}
