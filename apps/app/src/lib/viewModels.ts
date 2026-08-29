@@ -54,6 +54,7 @@ interface RawTask {
   dueAt?: Date | null;
   assignee?: RawUser | null;
   completions: unknown[];
+  dueToday: boolean;
 }
 
 export function toTaskView(task: RawTask): TaskView {
@@ -65,6 +66,7 @@ export function toTaskView(task: RawTask): TaskView {
     dueAt: task.dueAt ? new Date(task.dueAt) : null,
     assignee: task.assignee ? toFamilyMemberView(task.assignee) : null,
     completedToday: task.completions.length > 0,
+    dueToday: task.dueToday,
   };
 }
 

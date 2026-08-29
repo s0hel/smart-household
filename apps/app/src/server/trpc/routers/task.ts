@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { taskInputSchema } from "@household/domain";
+import { isTaskDueOn, taskInputSchema } from "@household/domain";
 import { router, capabilityProcedure } from "../trpc";
 import { logAudit } from "../../audit";
 
@@ -21,7 +21,10 @@ export const taskRouter = router({
       },
       orderBy: { createdAt: "asc" },
     });
-    return tasks;
+    return tasks.map((task) => ({
+      ...task,
+      dueToday: isTaskDueOn(task.frequency, task.dueAt ?? task.createdAt, today),
+    }));
   }),
 
   create: capabilityProcedure("task", "create")

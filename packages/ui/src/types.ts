@@ -35,6 +35,7 @@ export interface TaskView {
   dueAt?: Date | null;
   assignee?: FamilyMemberView | null;
   completedToday: boolean;
+  dueToday: boolean;
 }
 
 export interface ListItemView {

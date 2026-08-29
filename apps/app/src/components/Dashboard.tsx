@@ -19,7 +19,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
   });
 
   const events = (eventsQuery.data ?? []).map(toEventView);
-  const tasks = (tasksQuery.data ?? []).map(toTaskView);
+  const tasks = (tasksQuery.data ?? []).map(toTaskView).filter((task) => task.dueToday);
 
   const todayEvents = events.filter((e) => isToday(e.startAt));
   const tomorrowEvents = events.filter((e) => isTomorrow(e.startAt));
