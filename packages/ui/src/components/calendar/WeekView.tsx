@@ -47,7 +47,13 @@ export function WeekView({
                   const { top, height } = eventPosition(event);
                   return (
                     <div key={event.id} className="absolute left-0.5 right-0.5" style={{ top, height }}>
-                      <EventCard event={event} compact onClick={() => onEventClick?.(event)} className="h-full" />
+                      <EventCard
+                        event={event}
+                        compact
+                        dense={height < 48}
+                        onClick={() => onEventClick?.(event)}
+                        className="h-full"
+                      />
                     </div>
                   );
                 })}

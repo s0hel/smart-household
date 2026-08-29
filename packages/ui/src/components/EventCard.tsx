@@ -13,13 +13,44 @@ export function EventCard({
   event,
   onClick,
   compact = false,
+  dense = false,
   className,
 }: {
   event: EventView;
   onClick?: () => void;
   compact?: boolean;
+  /** For short slots in the week/day grid: single line, no wrapping, badges collapse to dots. */
+  dense?: boolean;
   className?: string;
 }) {
+  if (dense) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex w-full items-center gap-1.5 overflow-hidden rounded-lg border-l-4 bg-white px-1.5 py-1 text-left shadow-sm transition hover:shadow-md",
+          className,
+        )}
+        style={{ borderLeftColor: event.colorHex }}
+      >
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-900">{event.title}</span>
+        {event.assignees.length > 0 && (
+          <span className="flex shrink-0 -space-x-1">
+            {event.assignees.slice(0, 4).map((person) => (
+              <span
+                key={person.id}
+                className="h-2 w-2 rounded-full ring-1 ring-white"
+                style={{ backgroundColor: person.colorHex }}
+              />
+            ))}
+          </span>
+        )}
+        <span className="shrink-0 whitespace-nowrap text-[10px] text-gray-400">{formatTimeRange(event)}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -32,7 +63,9 @@ export function EventCard({
       style={{ borderLeftColor: event.colorHex }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={cn("font-semibold text-gray-900", compact ? "text-sm" : "text-base")}>{event.title}</span>
+        <span className={cn("min-w-0 truncate font-semibold text-gray-900", compact ? "text-sm" : "text-base")}>
+          {event.title}
+        </span>
         <span className="whitespace-nowrap text-xs text-gray-500">{formatTimeRange(event)}</span>
       </div>
       {!compact && (event.location || event.travelTimeMinutes) && (
