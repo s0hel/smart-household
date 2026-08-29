@@ -2,9 +2,11 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
-// Read-only for the initial sync — two-way write-back is a separate,
-// not-yet-built Milestone 2 item (see TODO.md).
-const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+// Read + write on the Events resource only (not full calendar settings) —
+// needed for two-way write-back (see writebackGoogleCalendar.ts). Accounts
+// connected before this scope changed are still on the old readonly grant
+// until they reconnect ("Connect Google Calendar" again re-triggers consent).
+const SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -74,6 +76,18 @@ export interface GoogleCalendarEvent {
   description?: string;
   start?: { date?: string; dateTime?: string };
   end?: { date?: string; dateTime?: string };
+  // Stable across every attendee's own copy of the same event — unlike `id`,
+  // which is per-account. This is what lets sync dedup the same real-world
+  // event arriving via two different connected calendars.
+  iCalUID?: string;
+}
+
+export interface GoogleCalendarEventInput {
+  summary: string;
+  location?: string | null;
+  description?: string | null;
+  start: { date?: string; dateTime?: string };
+  end: { date?: string; dateTime?: string };
 }
 
 export async function fetchPrimaryCalendarEvents(
@@ -104,4 +118,42 @@ export async function fetchPrimaryCalendarEvents(
   } while (pageToken);
 
   return events;
+}
+
+export async function createGoogleCalendarEvent(
+  accessToken: string,
+  input: GoogleCalendarEventInput,
+): Promise<GoogleCalendarEvent> {
+  const res = await fetch(GOOGLE_CALENDAR_EVENTS_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`Google Calendar create failed: ${res.status} ${await res.text()}`);
+  return res.json() as Promise<GoogleCalendarEvent>;
+}
+
+export async function updateGoogleCalendarEvent(
+  accessToken: string,
+  googleEventId: string,
+  input: GoogleCalendarEventInput,
+): Promise<GoogleCalendarEvent> {
+  const res = await fetch(`${GOOGLE_CALENDAR_EVENTS_URL}/${encodeURIComponent(googleEventId)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`Google Calendar update failed: ${res.status} ${await res.text()}`);
+  return res.json() as Promise<GoogleCalendarEvent>;
+}
+
+export async function deleteGoogleCalendarEvent(accessToken: string, googleEventId: string): Promise<void> {
+  const res = await fetch(`${GOOGLE_CALENDAR_EVENTS_URL}/${encodeURIComponent(googleEventId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  // 404/410 means it's already gone on Google's side — fine, nothing to retract.
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    throw new Error(`Google Calendar delete failed: ${res.status} ${await res.text()}`);
+  }
 }

@@ -1,0 +1,385 @@
+"use client";
+
+import * as React from "react";
+import { addDays, addWeeks, format, startOfWeek } from "date-fns";
+import { useSession } from "next-auth/react";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "@household/ui";
+import { can, type Role } from "@household/domain";
+import { trpc } from "@/lib/trpc";
+
+const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
+type MealType = (typeof MEAL_TYPES)[number];
+
+const MEAL_LABELS: Record<MealType, string> = {
+  BREAKFAST: "Breakfast",
+  LUNCH: "Lunch",
+  DINNER: "Dinner",
+  SNACK: "Snack",
+};
+
+interface IngredientRow {
+  name: string;
+  quantity: string;
+  category: string;
+}
+
+function AssignMealPopover({
+  date,
+  mealType,
+  onClose,
+}: {
+  date: Date;
+  mealType: MealType;
+  onClose: () => void;
+}) {
+  const { data: recipes } = trpc.recipe.list.useQuery();
+  const utils = trpc.useUtils();
+  const upsert = trpc.mealPlan.upsert.useMutation({
+    onSuccess: () => {
+      utils.mealPlan.list.invalidate();
+      onClose();
+    },
+  });
+
+  const [recipeId, setRecipeId] = React.useState("");
+  const [customTitle, setCustomTitle] = React.useState("");
+
+  return (
+    <div className="absolute z-10 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+      <p className="mb-2 text-xs font-semibold text-gray-500">
+        {MEAL_LABELS[mealType]} · {format(date, "EEE MMM d")}
+      </p>
+      <select
+        className="mb-2 h-9 w-full rounded-lg border border-gray-300 px-2 text-sm"
+        value={recipeId}
+        onChange={(e) => {
+          setRecipeId(e.target.value);
+          if (e.target.value) setCustomTitle("");
+        }}
+      >
+        <option value="">Pick a recipe...</option>
+        {(recipes ?? []).map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </select>
+      <Input
+        placeholder="...or a custom title"
+        value={customTitle}
+        onChange={(e) => {
+          setCustomTitle(e.target.value);
+          if (e.target.value) setRecipeId("");
+        }}
+        className="mb-2"
+      />
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!recipeId && !customTitle.trim()}
+          onClick={() =>
+            upsert.mutate({
+              date,
+              mealType,
+              recipeId: recipeId || null,
+              customTitle: customTitle.trim() || null,
+            })
+          }
+        >
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RecipeForm({ onClose }: { onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const createRecipe = trpc.recipe.create.useMutation({
+    onSuccess: () => {
+      utils.recipe.list.invalidate();
+      onClose();
+    },
+  });
+
+  const [name, setName] = React.useState("");
+  const [servings, setServings] = React.useState(4);
+  const [ingredients, setIngredients] = React.useState<IngredientRow[]>([{ name: "", quantity: "", category: "" }]);
+
+  function updateIngredient(index: number, patch: Partial<IngredientRow>) {
+    setIngredients((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await createRecipe.mutateAsync({
+      name,
+      servings,
+      ingredients: ingredients
+        .filter((row) => row.name.trim())
+        .map((row) => ({
+          name: row.name.trim(),
+          quantity: row.quantity.trim() || null,
+          category: row.category.trim() || null,
+        })),
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-2">
+          <Label htmlFor="recipe-name">Name</Label>
+          <Input id="recipe-name" required value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="recipe-servings">Servings</Label>
+          <Input
+            id="recipe-servings"
+            type="number"
+            min={1}
+            value={servings}
+            onChange={(e) => setServings(Number(e.target.value))}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label>Ingredients</Label>
+        <div className="space-y-2">
+          {ingredients.map((row, i) => (
+            <div key={i} className="flex gap-2">
+              <Input
+                placeholder="Ingredient"
+                value={row.name}
+                onChange={(e) => updateIngredient(i, { name: e.target.value })}
+                className="flex-[2]"
+              />
+              <Input
+                placeholder="Qty"
+                value={row.quantity}
+                onChange={(e) => updateIngredient(i, { quantity: e.target.value })}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Category"
+                value={row.category}
+                onChange={(e) => updateIngredient(i, { category: e.target.value })}
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setIngredients((rows) => rows.filter((_, idx) => idx !== i))}
+                className="px-1 text-xs text-red-500 hover:underline"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setIngredients((rows) => [...rows, { name: "", quantity: "", category: "" }])}
+          className="mt-2 text-xs font-medium text-blue-600 hover:underline"
+        >
+          + Add ingredient
+        </button>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm">
+          Save recipe
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function MealPlanPage() {
+  const { data: session } = useSession();
+  const { data: members } = trpc.familyMember.list.useQuery();
+  const activeRole = (members?.find((m) => m.id === session?.user.activeProfileId)?.role ?? "READONLY") as Role;
+  const canManage = can(activeRole, "mealPlanEntry", "create");
+  const canGenerateList = can(activeRole, "list", "create");
+
+  const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const weekEnd = addDays(weekStart, 6);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const utils = trpc.useUtils();
+  const entriesQuery = trpc.mealPlan.list.useQuery({ from: weekStart, to: weekEnd });
+  const deleteEntry = trpc.mealPlan.delete.useMutation({ onSuccess: () => utils.mealPlan.list.invalidate() });
+  const generateList = trpc.mealPlan.generateGroceryList.useMutation({
+    onSuccess: () => utils.list.list.invalidate(),
+  });
+
+  const [showRecipeForm, setShowRecipeForm] = React.useState(false);
+  const [editingCell, setEditingCell] = React.useState<{ date: Date; mealType: MealType } | null>(null);
+
+  const entries = entriesQuery.data ?? [];
+
+  function entryFor(date: Date, mealType: MealType) {
+    return entries.find(
+      (e) => new Date(e.date).toDateString() === date.toDateString() && e.mealType === mealType,
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Meal Plan</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setWeekStart((d) => addWeeks(d, -1))}>
+            ← Prev
+          </Button>
+          <span className="text-sm text-gray-600">
+            {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => setWeekStart((d) => addWeeks(d, 1))}>
+            Next →
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="overflow-x-auto pt-4">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="w-24 text-left text-xs font-semibold uppercase text-gray-400">Meal</th>
+                {days.map((day) => (
+                  <th key={day.toISOString()} className="px-1 pb-2 text-center text-xs font-semibold text-gray-600">
+                    {format(day, "EEE")}
+                    <div className="font-normal text-gray-400">{format(day, "MMM d")}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {MEAL_TYPES.map((mealType) => (
+                <tr key={mealType} className="border-t border-gray-100">
+                  <td className="py-2 text-xs font-semibold uppercase text-gray-400">{MEAL_LABELS[mealType]}</td>
+                  {days.map((day) => {
+                    const entry = entryFor(day, mealType);
+                    const isEditing =
+                      editingCell?.mealType === mealType && editingCell.date.toDateString() === day.toDateString();
+                    return (
+                      <td key={day.toISOString()} className="relative px-1 py-1 align-top">
+                        {entry ? (
+                          <div className="group relative rounded-lg bg-blue-50 px-2 py-1.5 text-xs text-blue-900">
+                            {entry.recipe?.name ?? entry.customTitle}
+                            {canManage && (
+                              <button
+                                onClick={() => deleteEntry.mutate({ id: entry.id })}
+                                className="absolute right-1 top-1 hidden text-red-500 group-hover:block"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          canManage && (
+                            <button
+                              onClick={() => setEditingCell({ date: day, mealType })}
+                              className="flex h-9 w-full items-center justify-center rounded-lg text-gray-300 hover:bg-gray-50 hover:text-gray-500"
+                            >
+                              +
+                            </button>
+                          )
+                        )}
+                        {isEditing && (
+                          <AssignMealPopover date={day} mealType={mealType} onClose={() => setEditingCell(null)} />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      {canGenerateList && (
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            disabled={generateList.isPending}
+            onClick={() => generateList.mutate({ from: weekStart, to: weekEnd })}
+          >
+            Generate grocery list for this week
+          </Button>
+          {generateList.isSuccess && (
+            <p className="text-sm text-green-700">
+              Added &quot;{generateList.data.name}&quot; to <a href="/lists" className="underline">Lists</a>.
+            </p>
+          )}
+          {generateList.isError && <p className="text-sm text-red-600">{generateList.error.message}</p>}
+        </div>
+      )}
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">Recipes</h2>
+          {canManage && !showRecipeForm && (
+            <Button size="sm" variant="secondary" onClick={() => setShowRecipeForm(true)}>
+              + Add recipe
+            </Button>
+          )}
+        </div>
+
+        {showRecipeForm && <RecipeForm onClose={() => setShowRecipeForm(false)} />}
+
+        <RecipeList />
+      </section>
+    </div>
+  );
+}
+
+function RecipeList() {
+  const recipesQuery = trpc.recipe.list.useQuery();
+  const utils = trpc.useUtils();
+  const deleteRecipe = trpc.recipe.delete.useMutation({ onSuccess: () => utils.recipe.list.invalidate() });
+  const { data: session } = useSession();
+  const { data: members } = trpc.familyMember.list.useQuery();
+  const activeRole = (members?.find((m) => m.id === session?.user.activeProfileId)?.role ?? "READONLY") as Role;
+  const canDelete = can(activeRole, "recipe", "delete");
+
+  const recipes = recipesQuery.data ?? [];
+
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {recipes.map((recipe) => (
+        <Card key={recipe.id}>
+          <CardHeader>
+            <CardTitle>{recipe.name}</CardTitle>
+            {canDelete && (
+              <button onClick={() => deleteRecipe.mutate({ id: recipe.id })} className="text-xs text-red-500 hover:underline">
+                Delete
+              </button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {recipe.servings && <p className="mb-1 text-xs text-gray-400">Serves {recipe.servings}</p>}
+            <ul className="space-y-0.5 text-sm text-gray-600">
+              {recipe.ingredients.map((ing) => (
+                <li key={ing.id}>
+                  {ing.name}
+                  {ing.quantity && <span className="text-gray-400"> · {ing.quantity}</span>}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
+      {recipes.length === 0 && <p className="text-sm text-gray-400">No recipes yet.</p>}
+    </div>
+  );
+}

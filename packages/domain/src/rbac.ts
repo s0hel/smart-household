@@ -10,7 +10,9 @@ export type Resource =
   | "reward"
   | "rewardRedemption"
   | "list"
-  | "listItem";
+  | "listItem"
+  | "recipe"
+  | "mealPlanEntry";
 
 export type Action = "create" | "read" | "update" | "delete" | "complete" | "approve";
 
@@ -32,6 +34,8 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     rewardRedemption: ["create", "read", "approve"],
     list: ["create", "read", "update", "delete"],
     listItem: ["create", "read", "update", "delete"],
+    recipe: ["create", "read", "update", "delete"],
+    mealPlanEntry: ["create", "read", "update", "delete"],
   },
   PARENT: {
     household: ["read"],
@@ -44,6 +48,8 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     rewardRedemption: ["create", "read", "approve"],
     list: ["create", "read", "update", "delete"],
     listItem: ["create", "read", "update", "delete"],
+    recipe: ["create", "read", "update", "delete"],
+    mealPlanEntry: ["create", "read", "update", "delete"],
   },
   CHILD: {
     household: ["read"],
@@ -54,6 +60,8 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     rewardRedemption: ["create", "read"],
     list: ["read"],
     listItem: ["read", "update"],
+    recipe: ["read"],
+    mealPlanEntry: ["read"],
   },
   GUEST: {
     household: ["read"],
@@ -64,6 +72,8 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     event: ["read"],
     task: ["read"],
     list: ["read"],
+    recipe: ["read"],
+    mealPlanEntry: ["read"],
   },
 };
 

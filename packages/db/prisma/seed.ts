@@ -142,7 +142,7 @@ async function main() {
   void outing;
 
   // --- Tasks / chores -------------------------------------------------------
-  await prisma.task.create({
+  const trashTask = await prisma.task.create({
     data: {
       householdId: household.id,
       title: "Take trash out",
@@ -166,7 +166,7 @@ async function main() {
     },
   });
 
-  await prisma.task.create({
+  const feedDogTask = await prisma.task.create({
     data: {
       householdId: household.id,
       title: "Feed dog",
@@ -188,6 +188,67 @@ async function main() {
       points: 0,
     },
   });
+
+  // --- Chore completion history (so the Rewards page has points to redeem) --
+  for (let daysAgo = 1; daysAgo <= 30; daysAgo++) {
+    const occurrenceDate = new Date();
+    occurrenceDate.setHours(0, 0, 0, 0);
+    occurrenceDate.setDate(occurrenceDate.getDate() - daysAgo);
+
+    await prisma.choreCompletion.create({
+      data: { taskId: trashTask.id, occurrenceDate, completedById: imran.id, pointsAwarded: 2 },
+    });
+    await prisma.choreCompletion.create({
+      data: { taskId: feedDogTask.id, occurrenceDate, completedById: zara.id, pointsAwarded: 3 },
+    });
+  }
+
+  // --- Recipes + meal plan --------------------------------------------------
+  const [tacos, stirFry] = await Promise.all([
+    prisma.recipe.create({
+      data: {
+        householdId: household.id,
+        name: "Chicken Tacos",
+        servings: 4,
+        prepMinutes: 15,
+        cookMinutes: 20,
+        ingredients: {
+          create: [
+            { name: "Chicken breast", quantity: "1.5 lb", category: "Meat", order: 0 },
+            { name: "Taco shells", quantity: "8", category: "Pantry", order: 1 },
+            { name: "Lettuce", quantity: "1 head", category: "Produce", order: 2 },
+            { name: "Cheese", quantity: "1 cup shredded", category: "Dairy", order: 3 },
+            { name: "Tomatoes", quantity: "2", category: "Produce", order: 4 },
+          ],
+        },
+      },
+    }),
+    prisma.recipe.create({
+      data: {
+        householdId: household.id,
+        name: "Veggie Stir Fry",
+        servings: 4,
+        prepMinutes: 10,
+        cookMinutes: 15,
+        ingredients: {
+          create: [
+            { name: "Rice", quantity: "2 cups", category: "Pantry", order: 0 },
+            { name: "Chicken breast", quantity: "1 lb", category: "Meat", order: 1 },
+            { name: "Tomatoes", quantity: "1", category: "Produce", order: 2 },
+          ],
+        },
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.mealPlanEntry.create({
+      data: { householdId: household.id, date: thisWeek(1, 0, 0), mealType: "DINNER", recipeId: tacos.id },
+    }),
+    prisma.mealPlanEntry.create({
+      data: { householdId: household.id, date: thisWeek(3, 0, 0), mealType: "DINNER", recipeId: stirFry.id },
+    }),
+  ]);
 
   // --- Lists ---------------------------------------------------------------
   await prisma.list.create({

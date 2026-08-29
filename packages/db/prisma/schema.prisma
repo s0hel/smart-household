@@ -43,6 +43,13 @@ enum ListType {
   CUSTOM
 }
 
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
 // ---------------------------------------------------------------------------
 // Core tenancy
 // ---------------------------------------------------------------------------
@@ -62,6 +69,8 @@ model Household {
   rewards          Reward[]
   lists            List[]
   auditLogs        AuditLog[]
+  recipes          Recipe[]
+  mealPlanEntries  MealPlanEntry[]
 }
 
 model User {
@@ -136,10 +145,35 @@ model CalendarAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  events Event[]
+  events      Event[]
+  sourceLinks EventSourceLink[]
 
   @@unique([householdId, ownerId, provider])
   @@index([householdId])
+}
+
+// Maps a (calendarAccount, providerEventId) pair to the shared Event it
+// corresponds to. There can be more than one link per Event — e.g. two
+// household members each connect their own Google account and both are
+// invited to the same real-world event, so it arrives twice with different
+// provider event ids but the same canonicalHash (see dedup logic in
+// syncGoogleCalendar.ts) — and this is also how outbound write-back tracks
+// which provider-side event id an in-app-created Event maps to per assignee.
+model EventSourceLink {
+  id String @id @default(cuid())
+
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  calendarAccount   CalendarAccount @relation(fields: [calendarAccountId], references: [id], onDelete: Cascade)
+  calendarAccountId String
+
+  sourceEventId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([calendarAccountId, sourceEventId])
+  @@index([eventId])
 }
 
 model Event {
@@ -165,8 +199,9 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignees EventAssignee[]
-  checklist EventChecklistItem[]
+  assignees   EventAssignee[]
+  checklist   EventChecklistItem[]
+  sourceLinks EventSourceLink[]
 
   @@unique([calendarAccountId, sourceEventId])
   @@index([householdId, startAt])
@@ -313,6 +348,64 @@ model ListItem {
   updatedAt DateTime @updatedAt
 
   @@index([listId])
+}
+
+// ---------------------------------------------------------------------------
+// Meal planning
+// ---------------------------------------------------------------------------
+
+model Recipe {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  name         String
+  description  String?
+  instructions String?
+  servings     Int?    @default(4)
+  prepMinutes  Int?
+  cookMinutes  Int?
+  imageUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ingredients     RecipeIngredient[]
+  mealPlanEntries MealPlanEntry[]
+
+  @@index([householdId])
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+
+  name     String
+  quantity String?
+  category String?
+  order    Int     @default(0)
+
+  @@index([recipeId])
+}
+
+model MealPlanEntry {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  date        DateTime
+  mealType    MealType
+  recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  recipeId    String?
+  customTitle String?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([householdId, date, mealType])
+  @@index([householdId, date])
 }
 
 // ---------------------------------------------------------------------------

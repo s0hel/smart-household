@@ -2,6 +2,18 @@ import { z } from "zod";
 import { eventInputSchema, eventUpdateInputSchema } from "@household/domain";
 import { router, capabilityProcedure } from "../trpc";
 import { logAudit } from "../../audit";
+import { pushEventToGoogle, retractEventFromGoogle } from "../../integrations/writebackGoogleCalendar";
+
+// Two-way write-back to Google is best-effort: the in-app DB write is what
+// actually matters to the user, so a Google API hiccup shouldn't fail their
+// save. Log and move on.
+async function writeBackSafely(fn: () => Promise<void>) {
+  try {
+    await fn();
+  } catch (err) {
+    console.error("Google Calendar write-back failed", err);
+  }
+}
 
 const EVENT_INCLUDE = {
   assignees: { include: { user: true } },
@@ -49,6 +61,7 @@ export const eventRouter = router({
         entityType: "event",
         entityId: event.id,
       });
+      await writeBackSafely(() => pushEventToGoogle(ctx.prisma, event.id));
       return event;
     }),
 
@@ -79,6 +92,7 @@ export const eventRouter = router({
         entityType: "event",
         entityId: event.id,
       });
+      await writeBackSafely(() => pushEventToGoogle(ctx.prisma, event.id));
       return event;
     }),
 
@@ -88,6 +102,7 @@ export const eventRouter = router({
       const existing = await ctx.prisma.event.findFirstOrThrow({
         where: { id: input.id, householdId: ctx.householdId },
       });
+      await writeBackSafely(() => retractEventFromGoogle(ctx.prisma, existing.id));
       await ctx.prisma.event.delete({ where: { id: existing.id } });
       await logAudit(ctx.prisma, {
         householdId: ctx.householdId,
