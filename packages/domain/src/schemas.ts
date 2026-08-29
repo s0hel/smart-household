@@ -26,27 +26,32 @@ export const eventChecklistItemInputSchema = z.object({
   checked: z.boolean().default(false),
 });
 
-export const eventInputSchema = z
-  .object({
-    title: z.string().min(1).max(140),
-    startAt: z.coerce.date(),
-    endAt: z.coerce.date(),
-    allDay: z.boolean().default(false),
-    location: z.string().max(240).optional().nullable(),
-    description: z.string().max(2000).optional().nullable(),
-    colorHex: z
-      .string()
-      .regex(/^#[0-9A-Fa-f]{6}$/)
-      .default("#3B82F6"),
-    recurrenceRule: z.string().optional().nullable(),
-    travelTimeMinutes: z.number().int().min(0).optional().nullable(),
-    assigneeIds: z.array(z.string()).default([]),
-    checklist: z.array(eventChecklistItemInputSchema).default([]),
-  })
-  .refine((data) => data.endAt >= data.startAt, {
-    message: "endAt must be after startAt",
-    path: ["endAt"],
-  });
+// The bare object schema (pre-refine) so both `create` (full, validated) and
+// `update` (partial) inputs can be derived from the same field definitions —
+// `ZodEffects` from `.refine()` doesn't support `.partial()`.
+export const eventFieldsSchema = z.object({
+  title: z.string().min(1).max(140),
+  startAt: z.coerce.date(),
+  endAt: z.coerce.date(),
+  allDay: z.boolean().default(false),
+  location: z.string().max(240).optional().nullable(),
+  description: z.string().max(2000).optional().nullable(),
+  colorHex: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default("#3B82F6"),
+  recurrenceRule: z.string().optional().nullable(),
+  travelTimeMinutes: z.number().int().min(0).optional().nullable(),
+  assigneeIds: z.array(z.string()).default([]),
+  checklist: z.array(eventChecklistItemInputSchema).default([]),
+});
+
+export const eventInputSchema = eventFieldsSchema.refine((data) => data.endAt >= data.startAt, {
+  message: "endAt must be after startAt",
+  path: ["endAt"],
+});
+
+export const eventUpdateInputSchema = eventFieldsSchema.partial().extend({ id: z.string() });
 
 export const taskInputSchema = z.object({
   title: z.string().min(1).max(140),
