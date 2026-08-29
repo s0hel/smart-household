@@ -2,6 +2,8 @@
 
 Monorepo for the household operating system described in [business-requirements.md](business-requirements.md) and [technical-design.md](technical-design.md). This is Milestone 1 of Phase 1 (see the plan referenced in that doc): core household, calendar, tasks/chores, and lists — no external calendar sync, realtime, kiosk pairing, or PWA offline support yet.
 
+**Picking this up in a new session? Start with [TODO.md](TODO.md)** — it has the resume commands, a full status snapshot, and the checklist for what's next.
+
 ## Stack
 
 TypeScript monorepo (pnpm + Turborepo), Next.js 15 App Router, tRPC, Prisma + Postgres, Auth.js (credentials), Tailwind CSS.
@@ -40,4 +42,4 @@ Seeded via `pnpm db:seed`: "The Rahman Household" with 2 adults (Sohel — admin
 
 ## What's next
 
-Deferred to later milestones (see [technical-design.md](technical-design.md#13-implementation-roadmap)): Google/Microsoft/Apple calendar sync, realtime multi-device sync, kiosk device pairing, PWA offline + web push, meal planning, rewards redemption UI, and the AI Sidekick.
+See [TODO.md](TODO.md) for the full milestone-by-milestone checklist, known tech debt, and open questions.
