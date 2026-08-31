@@ -2,7 +2,9 @@
 
 This is the handoff doc for picking this project back up in a fresh Claude session. Read this first, then [README.md](README.md) (setup) and [technical-design.md](technical-design.md) (full architecture) as needed.
 
-**Status as of 2026-08-31 (session 3):** Fixed the Vercel production build (was failing) and upgraded Next.js 15.1.2 → 16.3.3. Not yet committed — see "What changed this session (session 3)" below.
+**Status as of 2026-08-31 (session 4):** Fixed Vercel deployment — the project's dashboard settings had **Framework Preset set to "NestJS"** and **Root Directory set to `./`** (repo root) instead of Next.js/`apps/app`, so every deploy failed post-build with `Error: No entrypoint found` (Vercel's generic Node builder searching for `src/main.ts` etc., since it wasn't being treated as a Next.js app at all). This was a Vercel project-settings misconfiguration, not a code issue — nothing in the repo needed to change. Fixed via the Vercel dashboard (Settings → Build and Deployment): Framework Preset → Next.js, Root Directory → `apps/app` (kept "Include files outside the Root Directory" enabled, required for the pnpm workspace deps). Redeployed and verified the production URL (`s0hel-smart-household.vercel.app`) loads and correctly redirects to `/sign-in`. All 5 required env vars (`DATABASE_URL`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`) were already set correctly for Production/Preview — no changes needed there.
+
+**Status as of 2026-08-31 (session 3):** Fixed the Vercel production build (was failing) and upgraded Next.js 15.1.2 → 16.3.3. Since committed — see "What changed this session (session 3)" below.
 
 **Status as of 2026-08-29 (session 2):** Milestone 2's calendar dedup + two-way Google write-back landed, and Phase 2's meal planning/grocery auto-gen + rewards redemption UI landed. Committed (`a9991e2`). The user reconnected Google Calendar under the new scope and the write-back push was verified live (create/update/delete) — see "What changed this session (session 2)" below.
 
@@ -29,7 +31,7 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 
 ---
 
-## What changed this session (session 3, 2026-08-31, NOT yet committed)
+## What changed this session (session 3, 2026-08-31, committed)
 
 - **Fixed the Vercel production build**, which was failing with `Parameter 'm' implicitly has an 'any' type` in `CalendarPage.tsx`. Root cause: Vercel's build environment runs pnpm v10, which blocks dependency `postinstall` scripts (including `@prisma/client`'s `prisma generate`) by default unless allowlisted — so Prisma Client was never generated, `ctx.prisma.*` calls collapsed to `any`, and that propagated through tRPC into every `.find()` callback on query results. Fixed by adding `"build": "prisma generate"` to `packages/db/package.json` — Turborepo's existing `dependsOn: ["^build"]` pipeline (`turbo.json`) now runs it automatically before `@household/app` builds, with no reliance on install-time lifecycle scripts.
   - **A second, separate issue surfaced once that was fixed**: `/family` calls `useSearchParams()` (reads calendar-OAuth-callback status query params) without a Suspense boundary, which Next.js requires for static prerendering. Fixed by wrapping `<FamilyPage />` in `<Suspense>` in `apps/app/src/app/(web)/family/page.tsx`.
