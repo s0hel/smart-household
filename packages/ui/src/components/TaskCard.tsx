@@ -16,7 +16,13 @@ export function TaskCard({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border border-ink-200 bg-white p-3", className)}>
+    <label
+      className={cn(
+        "flex items-center gap-3 rounded-xl border border-ink-200 bg-white p-3",
+        canComplete && "cursor-pointer",
+        className,
+      )}
+    >
       <Checkbox
         checked={task.completedToday}
         disabled={!canComplete}
@@ -36,6 +42,6 @@ export function TaskCard({
         <span className="whitespace-nowrap text-xs font-semibold text-gold-600">{task.points} ⭐</span>
       )}
       {task.assignee && <PersonBadge person={task.assignee} size="sm" showName={false} />}
-    </div>
+    </label>
   );
 }

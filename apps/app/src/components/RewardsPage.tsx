@@ -29,8 +29,8 @@ function RewardForm({ onClose }: { onClose: () => void }) {
         setName("");
       }}
     >
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
           <Label htmlFor="reward-name">Name</Label>
           <Input id="reward-name" required value={name} onChange={(e) => setName(e.target.value)} />
         </div>

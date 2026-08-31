@@ -3,17 +3,21 @@
 import * as React from "react";
 import { addDays, addMonths, addWeeks, format } from "date-fns";
 import { useSession } from "next-auth/react";
-import { Button, CalendarView, type CalendarMode, type EventView } from "@household/ui";
+import { Button, CalendarView, cn, type CalendarMode, type EventView } from "@household/ui";
 import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 import { toEventView } from "@/lib/viewModels";
 import { EventFormDialog } from "./EventFormDialog";
 
-const MODES: CalendarMode[] = ["day", "week", "month", "agenda"];
+const WEB_MODES: CalendarMode[] = ["day", "week", "month", "agenda"];
+// Week view needs ~9rem per day column — never fits a phone screen, so it's
+// dropped from the mobile mode switcher.
+const MOBILE_MODES: CalendarMode[] = ["day", "month", "agenda"];
 
-export function CalendarPage() {
+export function CalendarPage({ variant = "web" }: { variant?: "web" | "mobile" } = {}) {
   const { data: session } = useSession();
-  const [mode, setMode] = React.useState<CalendarMode>("week");
+  const MODES = variant === "mobile" ? MOBILE_MODES : WEB_MODES;
+  const [mode, setMode] = React.useState<CalendarMode>(variant === "mobile" ? "day" : "week");
   const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [dialogState, setDialogState] = React.useState<{ open: boolean; date: Date; editing: EventView | null }>({
     open: false,
@@ -50,12 +54,12 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={cn("flex flex-wrap items-center gap-3", variant === "mobile" ? "justify-center" : "justify-between")}>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => navigate(-1)} disabled={mode === "agenda"}>
             ←
           </Button>
-          <span className="min-w-[10rem] text-center text-sm font-medium text-ink-700">
+          <span className={cn("text-center text-sm font-medium text-ink-700", variant === "mobile" ? "min-w-[8rem]" : "min-w-[10rem]")}>
             {mode === "month" ? format(anchorDate, "MMMM yyyy") : format(anchorDate, "MMM d, yyyy")}
           </span>
           <Button size="sm" variant="secondary" onClick={() => navigate(1)} disabled={mode === "agenda"}>
@@ -79,7 +83,7 @@ export function CalendarPage() {
               </button>
             ))}
           </div>
-          {canManage && (
+          {canManage && variant !== "mobile" && (
             <Button size="sm" onClick={() => openCreate(anchorDate)}>
               + New event
             </Button>
@@ -94,6 +98,19 @@ export function CalendarPage() {
         onEventClick={canManage ? openEdit : undefined}
         onDayClick={canManage ? openCreate : undefined}
       />
+
+      {canManage && variant === "mobile" && (
+        <div className="fixed inset-x-0 bottom-24 z-10 mx-auto flex max-w-md justify-end px-4">
+          <button
+            type="button"
+            onClick={() => openCreate(anchorDate)}
+            aria-label="New event"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-sapphire-600 text-2xl leading-none text-white shadow-lg transition active:scale-95"
+          >
+            +
+          </button>
+        </div>
+      )}
 
       {dialogState.open && canManage && (
         <EventFormDialog

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -19,6 +19,13 @@ const bodoniModa = Bodoni_Moda({
 export const metadata: Metadata = {
   title: "Household",
   description: "The shared operating system for your family.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1B3A6B",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

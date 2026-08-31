@@ -103,7 +103,7 @@ export function FamilyPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="member-name">Name</Label>
                   <Input id="member-name" required value={name} onChange={(e) => setName(e.target.value)} />
@@ -138,7 +138,7 @@ export function FamilyPage() {
               </div>
 
               {role === "PARENT" ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="member-email">Email</Label>
                     <Input

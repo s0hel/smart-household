@@ -3,7 +3,7 @@
 import * as React from "react";
 import { addDays, addWeeks, format, startOfWeek } from "date-fns";
 import { useSession } from "next-auth/react";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "@household/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, cn } from "@household/ui";
 import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 
@@ -27,10 +27,13 @@ function AssignMealPopover({
   date,
   mealType,
   onClose,
+  inline = false,
 }: {
   date: Date;
   mealType: MealType;
   onClose: () => void;
+  /** Renders in-flow (full width, no floating position) for the mobile day list. */
+  inline?: boolean;
 }) {
   const { data: recipes } = trpc.recipe.list.useQuery();
   const utils = trpc.useUtils();
@@ -45,7 +48,12 @@ function AssignMealPopover({
   const [customTitle, setCustomTitle] = React.useState("");
 
   return (
-    <div className="absolute z-10 mt-1 w-56 rounded-xl border border-ink-200 bg-white p-3 shadow-lg">
+    <div
+      className={cn(
+        "rounded-xl border border-ink-200 bg-white p-3 shadow-lg",
+        inline ? "mt-2 w-full" : "absolute z-10 mt-1 w-56",
+      )}
+    >
       <p className="mb-2 text-xs font-semibold text-ink-500">
         {MEAL_LABELS[mealType]} · {format(date, "EEE MMM d")}
       </p>
@@ -131,7 +139,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="col-span-2">
           <Label htmlFor="recipe-name">Name</Label>
           <Input id="recipe-name" required value={name} onChange={(e) => setName(e.target.value)} />
@@ -152,7 +160,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
         <Label>Ingredients</Label>
         <div className="space-y-2">
           {ingredients.map((row, i) => (
-            <div key={i} className="flex gap-2">
+            <div key={i} className="flex flex-wrap gap-2">
               <Input
                 placeholder="Ingredient"
                 value={row.name}
@@ -202,7 +210,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function MealPlanPage() {
+export function MealPlanPage({ variant = "web" }: { variant?: "web" | "mobile" } = {}) {
   const { data: session } = useSession();
   const { data: members } = trpc.familyMember.list.useQuery();
   const activeRole = (members?.find((m) => m.id === session?.user.activeProfileId)?.role ?? "READONLY") as Role;
@@ -212,6 +220,13 @@ export function MealPlanPage() {
   const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const weekEnd = addDays(weekStart, 6);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const [selectedDay, setSelectedDay] = React.useState(weekStart);
+  const [selectedWeekStart, setSelectedWeekStart] = React.useState(weekStart);
+  if (weekStart.getTime() !== selectedWeekStart.getTime()) {
+    setSelectedWeekStart(weekStart);
+    setSelectedDay(weekStart);
+  }
 
   const utils = trpc.useUtils();
   const entriesQuery = trpc.mealPlan.list.useQuery({ from: weekStart, to: weekEnd });
@@ -248,64 +263,127 @@ export function MealPlanPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="overflow-x-auto pt-4">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="w-24 text-left text-xs font-semibold uppercase text-ink-400">Meal</th>
-                {days.map((day) => (
-                  <th key={day.toISOString()} className="px-1 pb-2 text-center text-xs font-semibold text-ink-600">
-                    {format(day, "EEE")}
-                    <div className="font-normal text-ink-400">{format(day, "MMM d")}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {MEAL_TYPES.map((mealType) => (
-                <tr key={mealType} className="border-t border-ink-100">
-                  <td className="py-2 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</td>
-                  {days.map((day) => {
-                    const entry = entryFor(day, mealType);
-                    const isEditing =
-                      editingCell?.mealType === mealType && editingCell.date.toDateString() === day.toDateString();
-                    return (
-                      <td key={day.toISOString()} className="relative px-1 py-1 align-top">
-                        {entry ? (
-                          <div className="group relative rounded-lg bg-sapphire-50 px-2 py-1.5 text-xs text-sapphire-900">
-                            {entry.recipe?.name ?? entry.customTitle}
-                            {canManage && (
-                              <button
-                                onClick={() => deleteEntry.mutate({ id: entry.id })}
-                                className="absolute right-1 top-1 hidden text-red-500 group-hover:block"
-                              >
-                                ×
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          canManage && (
-                            <button
-                              onClick={() => setEditingCell({ date: day, mealType })}
-                              className="flex h-9 w-full items-center justify-center rounded-lg text-ink-300 hover:bg-ink-50 hover:text-ink-500"
-                            >
-                              +
-                            </button>
-                          )
-                        )}
-                        {isEditing && (
-                          <AssignMealPopover date={day} mealType={mealType} onClose={() => setEditingCell(null)} />
-                        )}
-                      </td>
-                    );
-                  })}
+      {variant === "mobile" ? (
+        <div className="space-y-3">
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {days.map((day) => {
+              const active = day.toDateString() === selectedDay.toDateString();
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => setSelectedDay(day)}
+                  className={cn(
+                    "flex shrink-0 flex-col items-center rounded-xl px-3 py-2",
+                    active ? "bg-sapphire-600 text-white" : "bg-ink-50 text-ink-600",
+                  )}
+                >
+                  <span className="text-[11px] font-medium uppercase">{format(day, "EEE")}</span>
+                  <span className="text-sm font-semibold">{format(day, "d")}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-2">
+            {MEAL_TYPES.map((mealType) => {
+              const entry = entryFor(selectedDay, mealType);
+              const isEditing =
+                editingCell?.mealType === mealType && editingCell.date.toDateString() === selectedDay.toDateString();
+              return (
+                <div key={mealType} className="rounded-xl border border-ink-200 bg-white p-3">
+                  <p className="mb-1 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</p>
+                  {entry ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-sapphire-900">{entry.recipe?.name ?? entry.customTitle}</span>
+                      {canManage && (
+                        <button
+                          onClick={() => deleteEntry.mutate({ id: entry.id })}
+                          className="text-xs text-red-500 opacity-70"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingCell({ date: selectedDay, mealType })}
+                        className="flex h-9 items-center text-sm text-ink-400"
+                      >
+                        + Add
+                      </button>
+                    )
+                  )}
+                  {isEditing && (
+                    <AssignMealPopover date={selectedDay} mealType={mealType} onClose={() => setEditingCell(null)} inline />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="overflow-x-auto pt-4">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="w-24 text-left text-xs font-semibold uppercase text-ink-400">Meal</th>
+                  {days.map((day) => (
+                    <th key={day.toISOString()} className="px-1 pb-2 text-center text-xs font-semibold text-ink-600">
+                      {format(day, "EEE")}
+                      <div className="font-normal text-ink-400">{format(day, "MMM d")}</div>
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+              </thead>
+              <tbody>
+                {MEAL_TYPES.map((mealType) => (
+                  <tr key={mealType} className="border-t border-ink-100">
+                    <td className="py-2 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</td>
+                    {days.map((day) => {
+                      const entry = entryFor(day, mealType);
+                      const isEditing =
+                        editingCell?.mealType === mealType && editingCell.date.toDateString() === day.toDateString();
+                      return (
+                        <td key={day.toISOString()} className="relative px-1 py-1 align-top">
+                          {entry ? (
+                            <div className="group relative rounded-lg bg-sapphire-50 px-2 py-1.5 text-xs text-sapphire-900">
+                              {entry.recipe?.name ?? entry.customTitle}
+                              {canManage && (
+                                <button
+                                  onClick={() => deleteEntry.mutate({ id: entry.id })}
+                                  className="absolute right-1 top-1 text-red-500 opacity-0 group-hover:opacity-100"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            canManage && (
+                              <button
+                                onClick={() => setEditingCell({ date: day, mealType })}
+                                className="flex h-9 w-full items-center justify-center rounded-lg text-ink-300 hover:bg-ink-50 hover:text-ink-500"
+                              >
+                                +
+                              </button>
+                            )
+                          )}
+                          {isEditing && (
+                            <AssignMealPopover date={day} mealType={mealType} onClose={() => setEditingCell(null)} />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       {canGenerateList && (
         <div className="flex items-center gap-3">

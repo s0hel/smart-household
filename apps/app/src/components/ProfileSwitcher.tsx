@@ -2,11 +2,17 @@
 
 import * as React from "react";
 import { signOut, useSession } from "next-auth/react";
-import { Button, Input, PersonBadge } from "@household/ui";
+import { Button, Input, PersonBadge, cn } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 import { toFamilyMemberView } from "@/lib/viewModels";
 
-export function ProfileSwitcher() {
+export function ProfileSwitcher({
+  dropDirection = "up",
+  triggerClassName,
+}: {
+  dropDirection?: "up" | "down";
+  triggerClassName?: string;
+} = {}) {
   const { data: session, update } = useSession();
   const { data: members } = trpc.familyMember.list.useQuery(undefined, { enabled: !!session });
   const verifyPin = trpc.familyMember.verifyPin.useMutation();
@@ -57,13 +63,21 @@ export function ProfileSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-xl p-2 text-left hover:bg-ink-100"
+        className={cn(
+          "flex items-center gap-2 rounded-xl p-2 text-left hover:bg-ink-100",
+          triggerClassName ?? "w-full",
+        )}
       >
         {activeProfile && <PersonBadge person={toFamilyMemberView(activeProfile)} />}
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 z-10 mb-2 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg">
+        <div
+          className={cn(
+            "absolute z-10 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg",
+            dropDirection === "up" ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2",
+          )}
+        >
           {pinTarget ? (
             <form onSubmit={submitPin} className="space-y-2 p-2">
               <p className="text-sm font-medium text-ink-700">Enter PIN</p>

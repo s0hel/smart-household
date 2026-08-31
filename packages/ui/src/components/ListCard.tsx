@@ -40,15 +40,17 @@ export function ListCard({
               {list.items
                 .filter((item) => (item.category ?? "Other") === category)
                 .map((item) => (
-                  <li key={item.id} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={item.checked}
-                      onChange={(e) => onToggleItem?.(item.id, e.target.checked)}
-                    />
-                    <span className={cn("text-sm text-ink-800", item.checked && "text-ink-400 line-through")}>
-                      {item.label}
-                      {item.quantity && <span className="text-ink-400"> · {item.quantity}</span>}
-                    </span>
+                  <li key={item.id}>
+                    <label className="flex cursor-pointer items-center gap-2 py-0.5">
+                      <Checkbox
+                        checked={item.checked}
+                        onChange={(e) => onToggleItem?.(item.id, e.target.checked)}
+                      />
+                      <span className={cn("text-sm text-ink-800", item.checked && "text-ink-400 line-through")}>
+                        {item.label}
+                        {item.quantity && <span className="text-ink-400"> · {item.quantity}</span>}
+                      </span>
+                    </label>
                   </li>
                 ))}
             </ul>

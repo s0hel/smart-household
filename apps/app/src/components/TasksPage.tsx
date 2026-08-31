@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
-import { Button, Input, Label, TaskCard } from "@household/ui";
+import { Button, Input, Label, TaskCard, cn } from "@household/ui";
 import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 import { toTaskView } from "@/lib/viewModels";
 
-export function TasksPage() {
+export function TasksPage({ variant = "web" }: { variant?: "web" | "mobile" } = {}) {
   const { data: session } = useSession();
   const utils = trpc.useUtils();
   const tasksQuery = trpc.task.list.useQuery();
@@ -38,16 +38,22 @@ export function TasksPage() {
       <h1 className="font-display text-2xl italic text-sapphire-800">Tasks &amp; Chores</h1>
 
       {canManage && (
-        <form onSubmit={onCreate} className="flex flex-wrap items-end gap-3 rounded-2xl border border-ink-200 bg-white p-4">
-          <div className="flex-1">
+        <form
+          onSubmit={onCreate}
+          className={cn(
+            "gap-3 rounded-2xl border border-ink-200 bg-white p-4",
+            variant === "mobile" ? "flex flex-col" : "flex flex-wrap items-end",
+          )}
+        >
+          <div className={variant === "mobile" ? "w-full" : "flex-1"}>
             <Label htmlFor="task-title">Title</Label>
             <Input id="task-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
-          <div>
+          <div className={variant === "mobile" ? "w-full" : ""}>
             <Label htmlFor="task-type">Type</Label>
             <select
               id="task-type"
-              className="h-10 rounded-lg border border-ink-300 px-2 text-sm"
+              className="h-10 w-full rounded-lg border border-ink-300 px-2 text-sm"
               value={type}
               onChange={(e) => setType(e.target.value as typeof type)}
             >
@@ -57,11 +63,11 @@ export function TasksPage() {
               <option value="RECURRING">Recurring</option>
             </select>
           </div>
-          <div>
+          <div className={variant === "mobile" ? "w-full" : ""}>
             <Label htmlFor="task-assignee">Assignee</Label>
             <select
               id="task-assignee"
-              className="h-10 rounded-lg border border-ink-300 px-2 text-sm"
+              className="h-10 w-full rounded-lg border border-ink-300 px-2 text-sm"
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
             >
@@ -73,7 +79,7 @@ export function TasksPage() {
               ))}
             </select>
           </div>
-          <div className="w-24">
+          <div className={variant === "mobile" ? "w-full" : "w-24"}>
             <Label htmlFor="task-points">Points</Label>
             <Input
               id="task-points"
@@ -83,7 +89,9 @@ export function TasksPage() {
               onChange={(e) => setPoints(Number(e.target.value))}
             />
           </div>
-          <Button type="submit">Add</Button>
+          <Button type="submit" className={variant === "mobile" ? "w-full" : undefined}>
+            Add
+          </Button>
         </form>
       )}
 
@@ -98,7 +106,7 @@ export function TasksPage() {
             {canManage && (
               <button
                 onClick={() => deleteTask.mutate({ id: task.id })}
-                className="absolute right-2 top-1/2 hidden -translate-y-1/2 text-xs text-red-500 group-hover:block"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-60 hover:opacity-100"
               >
                 Remove
               </button>
