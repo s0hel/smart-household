@@ -26,7 +26,10 @@ export function CalendarPage() {
   const events = (eventsQuery.data ?? []).map(toEventView);
   const rawEvents = eventsQuery.data ?? [];
 
-  const activeRole = (members?.find((m) => m.id === session?.user.activeProfileId)?.role ?? "READONLY") as Role;
+  const activeRole = (
+    members?.find((m: NonNullable<typeof members>[number]) => m.id === session?.user.activeProfileId)?.role ??
+    "READONLY"
+  ) as Role;
   const canManage = can(activeRole, "event", "create");
 
   function navigate(direction: 1 | -1) {
