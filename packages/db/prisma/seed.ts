@@ -1,7 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword, hashPin } from "@household/domain";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 /** Returns the Date for `daysFromMonday` days after this week's Monday, at `hour`:`minute` local time. */
 function thisWeek(daysFromMonday: number, hour: number, minute = 0): Date {
