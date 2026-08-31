@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { FamilyPage } from "@/components/FamilyPage";
 
 export default function Family() {
-  return <FamilyPage />;
+  return (
+    <Suspense>
+      <FamilyPage />
+    </Suspense>
+  );
 }
