@@ -2,6 +2,8 @@
 
 This is the handoff doc for picking this project back up in a fresh Claude session. Read this first, then [README.md](README.md) (setup) and [technical-design.md](technical-design.md) (full architecture) as needed.
 
+**Status as of 2026-08-31 (session 3):** Fixed the Vercel production build (was failing) and upgraded Next.js 15.1.2 → 16.3.3. Not yet committed — see "What changed this session (session 3)" below.
+
 **Status as of 2026-08-29 (session 2):** Milestone 2's calendar dedup + two-way Google write-back landed, and Phase 2's meal planning/grocery auto-gen + rewards redemption UI landed. Committed (`a9991e2`). The user reconnected Google Calendar under the new scope and the write-back push was verified live (create/update/delete) — see "What changed this session (session 2)" below.
 
 **Status as of 2026-08-29 (session 1):** Phase 1 / Milestone 1 is built and committed. Since then: the recurrence engine tech-debt item is fixed, Milestone 2's first checklist item (Google Calendar OAuth connect + initial one-way sync) is built and verified end-to-end against a real Google account, and two calendar week/day-view layout bugs were fixed (content overflow, then short-event legibility). All committed — see "What changed this session (session 1)" below for commit-by-commit detail.
@@ -26,6 +28,19 @@ Demo login: `sohel@example.com` / `password123`. Seeded children: Imran (PIN `12
 **Known local-dev gotcha #2:** if using Postgres.app on macOS with `shared_preload_libraries=auth_permission_dialog`, connections to `localhost` can silently hang because that resolves to `::1` and Postgres.app's permission dialog gates new IPv6 client connections with a GUI prompt nothing automated can click. Use `127.0.0.1` explicitly in `DATABASE_URL` instead.
 
 ---
+
+## What changed this session (session 3, 2026-08-31, NOT yet committed)
+
+- **Fixed the Vercel production build**, which was failing with `Parameter 'm' implicitly has an 'any' type` in `CalendarPage.tsx`. Root cause: Vercel's build environment runs pnpm v10, which blocks dependency `postinstall` scripts (including `@prisma/client`'s `prisma generate`) by default unless allowlisted — so Prisma Client was never generated, `ctx.prisma.*` calls collapsed to `any`, and that propagated through tRPC into every `.find()` callback on query results. Fixed by adding `"build": "prisma generate"` to `packages/db/package.json` — Turborepo's existing `dependsOn: ["^build"]` pipeline (`turbo.json`) now runs it automatically before `@household/app` builds, with no reliance on install-time lifecycle scripts.
+  - **A second, separate issue surfaced once that was fixed**: `/family` calls `useSearchParams()` (reads calendar-OAuth-callback status query params) without a Suspense boundary, which Next.js requires for static prerendering. Fixed by wrapping `<FamilyPage />` in `<Suspense>` in `apps/app/src/app/(web)/family/page.tsx`.
+  - Verified with a full local `turbo run build` — completes cleanly, all routes generate.
+- **Upgraded Next.js 15.1.2 → 16.3.3** (React 19.0 → 19.2.8, `eslint-config-next` 15.1.2 → 16.3.3, `next-auth` 5.0.0-beta.25 → 5.0.0-beta.32 for its Next 16 peer-dep support). Scan of the [Next 16 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16) against this codebase found no usage of the big-ticket breaking changes (no dynamic page routes reading `params`/`searchParams` synchronously, no `images.domains`/AMP/`revalidateTag`/parallel-routes usage). Two things actually needed changing:
+  - `apps/app/src/middleware.ts` → `apps/app/src/proxy.ts` (Next 16 renames the file/convention; `CLAUDE.md`'s architecture section updated to match). Bonus: `proxy` always runs on the Node.js runtime rather than Edge, which cleared up the `bcryptjs`/Edge-Runtime build warnings that `next-auth`'s credentials provider was triggering.
+  - `apps/app`'s `lint` script (`next lint`, removed in 16) → `eslint .` against a new flat `apps/app/eslint.config.mjs` (replaces `.eslintrc.json`), per the `eslint-config-next` flat-config setup. Surfaced one pre-existing style warning in `postcss.config.mjs` (anonymous default export — flat config lints config files that `next lint` didn't); fixed trivially.
+  - Also bumped `package.json` `engines.node` to the new `>=20.9.0` floor and `@types/react`/`@types/react-dom` to match React 19.2.
+  - **Turbopack is now the default** for both `next dev` and `next build` (previously Webpack implicitly) — no custom webpack config existed in `next.config.mjs`, so this was a non-event, but worth knowing if a future dependency needs a webpack-only workaround.
+  - Verified: full `turbo run build`/`typecheck`/`lint` all clean, plus a manual browser smoke test of `next dev` — signed in, checked `/dashboard`, `/family` (the Suspense fix), `/m`, `/display`, signed out, confirmed `proxy.ts` still redirects an unauthenticated request to `/sign-in`, signed back in. No console errors on any surface.
+  - **Not touched, flagged as remaining risk**: `@trpc/*` is still pinned to `11.0.0-rc.688`, a stale prerelease — tRPC has since shipped stable `11.18.0`. It works fine against Next 16/React 19.2 as-is (peer deps are satisfied), so left alone as out-of-scope for this upgrade, but worth bumping to stable opportunistically. `next-auth` is still on a beta (`5.0.0-beta.32`, the latest beta) — v5 hasn't gone stable yet, nothing to do there but wait upstream.
 
 ## What changed this session (session 2, 2026-08-29, NOT yet committed)
 

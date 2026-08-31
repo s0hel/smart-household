@@ -43,7 +43,7 @@ TypeScript monorepo: pnpm workspaces + Turborepo, Next.js 15 App Router, tRPC v1
 - `(display)` → `/display` — kiosk/household-display layout
 - `(auth)` → `/sign-in`, `/sign-up`
 
-Route protection is centralized in `apps/app/src/middleware.ts` (redirects unauthenticated requests hitting any protected prefix to `/sign-in`), not per-page.
+Route protection is centralized in `apps/app/src/proxy.ts` (redirects unauthenticated requests hitting any protected prefix to `/sign-in`), not per-page. This is Next.js 16's `proxy` convention (renamed from `middleware`); it always runs on the Node.js runtime, not Edge.
 
 ### Auth and the "active profile" concept
 
