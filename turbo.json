@@ -6,6 +6,9 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
+    "@household/db#build": {
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true
