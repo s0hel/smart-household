@@ -3,8 +3,15 @@
 import { Button, PersonBadge, type EventView } from "@household/ui";
 
 function formatDateTime(event: EventView) {
+  console.log(event);
   const dateFmt = (d: Date) => d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  if (event.allDay) return dateFmt(event.startAt);
+  if (event.allDay) {
+    if (event.endAt == null || event.startAt == event.endAt) {
+      return dateFmt(event.startAt);
+    } else {
+      return dateFmt(event.startAt) + " to " + dateFmt(event.endAt);
+    }
+  }
 
   const timeFmt = (d: Date) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const sameDay = event.startAt.toDateString() === event.endAt.toDateString();
