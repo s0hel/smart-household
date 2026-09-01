@@ -1,8 +1,11 @@
 import * as React from "react";
 import { addDays, format, startOfWeek } from "date-fns";
+import { colorBackground, eventAccentColors } from "../../colorUtils";
 import type { EventView } from "../../types";
-import { HOUR_HEIGHT_PX, eventsOnDay, hoursOfDay, layoutDayEvents } from "./calendarMath";
+import { HOUR_HEIGHT_PX, MAX_VISIBLE_ALLDAY_ROWS, eventsOnDay, hoursOfDay, layoutAllDayBars, layoutDayEvents } from "./calendarMath";
 import { EventCard } from "../EventCard";
+
+const ALLDAY_ROW_HEIGHT = 22;
 
 export function WeekView({
   weekOf,
@@ -15,6 +18,18 @@ export function WeekView({
 }) {
   const start = startOfWeek(weekOf, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const allDayItems = layoutAllDayBars(events, start, 7);
+  const visibleTracks = Math.min(
+    allDayItems.reduce((max, item) => Math.max(max, item.track + 1), 0),
+    MAX_VISIBLE_ALLDAY_ROWS,
+  );
+  const hiddenAllDayByDay = new Map<number, number>();
+  for (const item of allDayItems) {
+    if (item.track < MAX_VISIBLE_ALLDAY_ROWS) continue;
+    for (let idx = item.startIdx; idx <= item.endIdx; idx++) {
+      hiddenAllDayByDay.set(idx, (hiddenAllDayByDay.get(idx) ?? 0) + 1);
+    }
+  }
 
   return (
     <div className="overflow-auto rounded-2xl border border-ink-200 bg-white">
@@ -27,6 +42,52 @@ export function WeekView({
           </div>
         ))}
 
+        {(visibleTracks > 0 || hiddenAllDayByDay.size > 0) && (
+          <>
+            <div className="border-l border-ink-100" />
+            <div
+              className="relative col-span-7 grid grid-cols-7 gap-y-0.5 border-b border-l border-ink-100 py-1"
+              style={{ minHeight: (visibleTracks || 1) * ALLDAY_ROW_HEIGHT }}
+            >
+              {allDayItems
+                .filter((item) => item.track < MAX_VISIBLE_ALLDAY_ROWS)
+                .map((item) => (
+                  <button
+                    type="button"
+                    key={item.event.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick?.(item.event);
+                    }}
+                    className="truncate rounded px-1.5 text-left text-[11px] font-medium text-white"
+                    style={{
+                      gridColumn: `${item.startIdx + 1} / ${item.endIdx + 2}`,
+                      gridRow: item.track + 1,
+                      height: ALLDAY_ROW_HEIGHT - 4,
+                      lineHeight: `${ALLDAY_ROW_HEIGHT - 4}px`,
+                      background: colorBackground(eventAccentColors(item.event)),
+                    }}
+                  >
+                    {item.event.title}
+                  </button>
+                ))}
+              {days.map((_, dayIdx) => {
+                const hidden = hiddenAllDayByDay.get(dayIdx);
+                if (!hidden) return <div key={dayIdx} />;
+                return (
+                  <div
+                    key={dayIdx}
+                    className="truncate px-1.5 text-[11px] text-ink-400"
+                    style={{ gridColumn: dayIdx + 1, gridRow: MAX_VISIBLE_ALLDAY_ROWS + 1 }}
+                  >
+                    +{hidden} more
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         <div className="col-span-full grid grid-cols-[4rem_repeat(7,minmax(9rem,1fr))]">
           <div>
             {hoursOfDay().map((hour) => (
@@ -37,7 +98,7 @@ export function WeekView({
             ))}
           </div>
           {days.map((day) => {
-            const dayEvents = eventsOnDay(events, day);
+            const dayEvents = eventsOnDay(events, day).filter((e) => !e.allDay);
             const { positions, overflow } = layoutDayEvents(dayEvents);
             return (
               <div key={day.toISOString()} className="relative border-l border-ink-100">

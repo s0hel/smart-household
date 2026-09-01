@@ -1,3 +1,4 @@
+import { differenceInCalendarDays, startOfDay } from "date-fns";
 import type { EventView } from "../../types";
 
 export const DAY_START_HOUR = 6;
@@ -36,6 +37,12 @@ export function eventsOnDay(events: EventView[], day: Date): EventView[] {
   return events
     .filter((e) => isSameCalendarDay(e.startAt, day))
     .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+}
+
+/** All-day events whose span covers `day`, regardless of which day they started on. */
+export function allDayEventsOnDay(events: EventView[], day: Date): EventView[] {
+  const dayStart = startOfDay(day);
+  return events.filter((e) => e.allDay && dayStart >= startOfDay(e.startAt) && dayStart <= allDayLastDay(e));
 }
 
 export interface LayoutPosition {
@@ -134,4 +141,61 @@ export function layoutDayEvents(dayEvents: EventView[]): DayLayout {
   }
 
   return { positions, overflow };
+}
+
+/** Beyond this many stacked all-day bars in a week row, extra events fold into "+N more". */
+export const MAX_VISIBLE_ALLDAY_ROWS = 2;
+
+/**
+ * The last calendar day an all-day event covers, inclusive. All-day events store `endAt`
+ * as an exclusive boundary (the day after the event ends — see syncGoogleCalendar's `toDate`),
+ * so a one-day event has `endAt` equal to `startAt` plus one day.
+ */
+export function allDayLastDay(event: EventView): Date {
+  const start = startOfDay(event.startAt);
+  const last = startOfDay(new Date(event.endAt.getTime() - 1));
+  return last < start ? start : last;
+}
+
+export interface AllDayBarItem {
+  event: EventView;
+  /** Day offset from `rangeStart`, clipped to the visible range. */
+  startIdx: number;
+  /** Inclusive day offset from `rangeStart`, clipped to the visible range. */
+  endIdx: number;
+  /** Vertical slot, kept constant across every week/row the event spans. */
+  track: number;
+}
+
+/**
+ * Lays out all-day events as horizontal bars across a date range (a week row, or a whole
+ * month grid) instead of confining each one to its start day. Every event gets a `track`
+ * (vertical slot) that stays constant across the full range, so a multi-week trip renders in
+ * the same row every week rather than jumping between tracks.
+ */
+export function layoutAllDayBars(events: EventView[], rangeStart: Date, rangeDays: number): AllDayBarItem[] {
+  const items = events
+    .filter((e) => e.allDay)
+    .map((event) => ({
+      event,
+      startIdx: differenceInCalendarDays(startOfDay(event.startAt), rangeStart),
+      endIdx: differenceInCalendarDays(allDayLastDay(event), rangeStart),
+    }))
+    .filter((item) => item.endIdx >= 0 && item.startIdx < rangeDays)
+    .map((item) => ({
+      ...item,
+      startIdx: Math.max(item.startIdx, 0),
+      endIdx: Math.min(item.endIdx, rangeDays - 1),
+    }))
+    .sort((a, b) => a.startIdx - b.startIdx || b.endIdx - b.startIdx - (a.endIdx - a.startIdx));
+
+  const trackEnds: number[] = [];
+  const result: AllDayBarItem[] = [];
+  for (const item of items) {
+    let track = trackEnds.findIndex((end) => end < item.startIdx);
+    if (track === -1) track = trackEnds.length;
+    trackEnds[track] = item.endIdx;
+    result.push({ ...item, track });
+  }
+  return result;
 }
