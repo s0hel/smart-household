@@ -21,6 +21,7 @@ packages/db/generated/
 # build
 dist/
 build/
+*.tsbuildinfo
 
 # ide
 .idea/
