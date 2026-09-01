@@ -101,6 +101,7 @@ model User {
   redemptions        RewardRedemption[] @relation("RedeemedBy")
   approvedRedemptions RewardRedemption[] @relation("RedemptionApprovedBy")
   auditLogs          AuditLog[]
+  mealPlanEntries    MealPlanEntry[]
 
   @@index([householdId])
 }
@@ -400,11 +401,16 @@ model MealPlanEntry {
   recipeId    String?
   customTitle String?
   notes       String?
+  assignee    User?     @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+  assigneeId  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([householdId, date, mealType])
+  // assigneeId is nullable and NULLs don't collide in a Postgres unique
+  // index, so this allows one un-assigned ("whole family") entry plus one
+  // entry per assignee for the same date/mealType.
+  @@unique([householdId, date, mealType, assigneeId])
   @@index([householdId, date])
 }
 

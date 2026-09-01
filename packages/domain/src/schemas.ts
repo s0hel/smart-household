@@ -113,6 +113,7 @@ export const mealPlanEntryInputSchema = z.object({
   recipeId: z.string().optional().nullable(),
   customTitle: z.string().max(140).optional().nullable(),
   notes: z.string().max(500).optional().nullable(),
+  assigneeId: z.string().optional().nullable(),
 });
 
 export const groceryListGenerateInputSchema = z.object({

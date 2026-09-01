@@ -23,14 +23,25 @@ interface IngredientRow {
   category: string;
 }
 
+interface MemberOption {
+  id: string;
+  name: string;
+  colorHex: string;
+}
+
 function AssignMealPopover({
   date,
   mealType,
+  members,
+  defaultAssigneeId = "",
   onClose,
   inline = false,
 }: {
   date: Date;
   mealType: MealType;
+  members: MemberOption[];
+  /** Pre-selects who this meal is for; "" means the whole family. */
+  defaultAssigneeId?: string;
   onClose: () => void;
   /** Renders in-flow (full width, no floating position) for the mobile day list. */
   inline?: boolean;
@@ -40,10 +51,12 @@ function AssignMealPopover({
   const upsert = trpc.mealPlan.upsert.useMutation({
     onSuccess: () => {
       utils.mealPlan.list.invalidate();
+      utils.recipe.list.invalidate();
       onClose();
     },
   });
 
+  const [assigneeId, setAssigneeId] = React.useState(defaultAssigneeId);
   const [recipeId, setRecipeId] = React.useState("");
   const [customTitle, setCustomTitle] = React.useState("");
 
@@ -57,6 +70,20 @@ function AssignMealPopover({
       <p className="mb-2 text-xs font-semibold text-ink-500">
         {MEAL_LABELS[mealType]} · {format(date, "EEE MMM d")}
       </p>
+      {members.length > 0 && (
+        <select
+          className="mb-2 h-9 w-full rounded-lg border border-ink-300 px-2 text-sm"
+          value={assigneeId}
+          onChange={(e) => setAssigneeId(e.target.value)}
+        >
+          <option value="">Whole family</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         className="mb-2 h-9 w-full rounded-lg border border-ink-300 px-2 text-sm"
         value={recipeId}
@@ -93,6 +120,7 @@ function AssignMealPopover({
             upsert.mutate({
               date,
               mealType,
+              assigneeId: assigneeId || null,
               recipeId: recipeId || null,
               customTitle: customTitle.trim() || null,
             })
@@ -239,9 +267,10 @@ export function MealPlanPage({ variant = "web" }: { variant?: "web" | "mobile" }
   const [editingCell, setEditingCell] = React.useState<{ date: Date; mealType: MealType } | null>(null);
 
   const entries = entriesQuery.data ?? [];
+  const memberOptions: MemberOption[] = members ?? [];
 
-  function entryFor(date: Date, mealType: MealType) {
-    return entries.find(
+  function entriesFor(date: Date, mealType: MealType) {
+    return entries.filter(
       (e) => new Date(e.date).toDateString() === date.toDateString() && e.mealType === mealType,
     );
   }
@@ -287,37 +316,56 @@ export function MealPlanPage({ variant = "web" }: { variant?: "web" | "mobile" }
 
           <div className="space-y-2">
             {MEAL_TYPES.map((mealType) => {
-              const entry = entryFor(selectedDay, mealType);
+              const mealEntries = entriesFor(selectedDay, mealType);
               const isEditing =
                 editingCell?.mealType === mealType && editingCell.date.toDateString() === selectedDay.toDateString();
               return (
                 <div key={mealType} className="rounded-xl border border-ink-200 bg-white p-3">
                   <p className="mb-1 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</p>
-                  {entry ? (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm text-sapphire-900">{entry.recipe?.name ?? entry.customTitle}</span>
-                      {canManage && (
-                        <button
-                          onClick={() => deleteEntry.mutate({ id: entry.id })}
-                          className="text-xs text-red-500 opacity-70"
-                        >
-                          Remove
-                        </button>
-                      )}
+                  {mealEntries.length > 0 && (
+                    <div className="space-y-1">
+                      {mealEntries.map((entry) => (
+                        <div key={entry.id} className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-sapphire-900">
+                            {entry.assignee && (
+                              <span
+                                className="mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                style={{ backgroundColor: entry.assignee.colorHex }}
+                              >
+                                {entry.assignee.name}
+                              </span>
+                            )}
+                            {entry.recipe?.name ?? entry.customTitle}
+                          </span>
+                          {canManage && (
+                            <button
+                              onClick={() => deleteEntry.mutate({ id: entry.id })}
+                              className="text-xs text-red-500 opacity-70"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    canManage && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingCell({ date: selectedDay, mealType })}
-                        className="flex h-9 items-center text-sm text-ink-400"
-                      >
-                        + Add
-                      </button>
-                    )
+                  )}
+                  {canManage && !isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingCell({ date: selectedDay, mealType })}
+                      className="mt-1 flex h-8 items-center text-sm text-ink-400"
+                    >
+                      + Add{mealEntries.length > 0 ? " another" : ""}
+                    </button>
                   )}
                   {isEditing && (
-                    <AssignMealPopover date={selectedDay} mealType={mealType} onClose={() => setEditingCell(null)} inline />
+                    <AssignMealPopover
+                      date={selectedDay}
+                      mealType={mealType}
+                      members={memberOptions}
+                      onClose={() => setEditingCell(null)}
+                      inline
+                    />
                   )}
                 </div>
               );
@@ -344,35 +392,54 @@ export function MealPlanPage({ variant = "web" }: { variant?: "web" | "mobile" }
                   <tr key={mealType} className="border-t border-ink-100">
                     <td className="py-2 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</td>
                     {days.map((day) => {
-                      const entry = entryFor(day, mealType);
+                      const mealEntries = entriesFor(day, mealType);
                       const isEditing =
                         editingCell?.mealType === mealType && editingCell.date.toDateString() === day.toDateString();
                       return (
                         <td key={day.toISOString()} className="relative px-1 py-1 align-top">
-                          {entry ? (
-                            <div className="group relative rounded-lg bg-sapphire-50 px-2 py-1.5 text-xs text-sapphire-900">
-                              {entry.recipe?.name ?? entry.customTitle}
-                              {canManage && (
-                                <button
-                                  onClick={() => deleteEntry.mutate({ id: entry.id })}
-                                  className="absolute right-1 top-1 text-red-500 opacity-0 group-hover:opacity-100"
+                          {mealEntries.length > 0 && (
+                            <div className="space-y-1">
+                              {mealEntries.map((entry) => (
+                                <div
+                                  key={entry.id}
+                                  className="group relative rounded-lg bg-sapphire-50 px-2 py-1.5 text-xs text-sapphire-900"
                                 >
-                                  ×
-                                </button>
-                              )}
+                                  {entry.assignee && (
+                                    <span
+                                      className="mr-1 inline-block rounded-full px-1 py-0.5 text-[9px] font-semibold text-white"
+                                      style={{ backgroundColor: entry.assignee.colorHex }}
+                                    >
+                                      {entry.assignee.name}
+                                    </span>
+                                  )}
+                                  {entry.recipe?.name ?? entry.customTitle}
+                                  {canManage && (
+                                    <button
+                                      onClick={() => deleteEntry.mutate({ id: entry.id })}
+                                      className="absolute right-1 top-1 text-red-500 opacity-0 group-hover:opacity-100"
+                                    >
+                                      ×
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          ) : (
-                            canManage && (
-                              <button
-                                onClick={() => setEditingCell({ date: day, mealType })}
-                                className="flex h-9 w-full items-center justify-center rounded-lg text-ink-300 hover:bg-ink-50 hover:text-ink-500"
-                              >
-                                +
-                              </button>
-                            )
+                          )}
+                          {canManage && !isEditing && (
+                            <button
+                              onClick={() => setEditingCell({ date: day, mealType })}
+                              className="mt-1 flex h-7 w-full items-center justify-center rounded-lg text-ink-300 hover:bg-ink-50 hover:text-ink-500"
+                            >
+                              +
+                            </button>
                           )}
                           {isEditing && (
-                            <AssignMealPopover date={day} mealType={mealType} onClose={() => setEditingCell(null)} />
+                            <AssignMealPopover
+                              date={day}
+                              mealType={mealType}
+                              members={memberOptions}
+                              onClose={() => setEditingCell(null)}
+                            />
                           )}
                         </td>
                       );

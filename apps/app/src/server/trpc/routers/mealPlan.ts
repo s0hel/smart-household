@@ -14,7 +14,10 @@ export const mealPlanRouter = router({
     .query(({ ctx, input }) =>
       ctx.prisma.mealPlanEntry.findMany({
         where: { householdId: ctx.householdId, date: { gte: input.from, lte: input.to } },
-        include: { recipe: { select: { id: true, name: true, imageUrl: true } } },
+        include: {
+          recipe: { select: { id: true, name: true, imageUrl: true } },
+          assignee: { select: { id: true, name: true, colorHex: true } },
+        },
         orderBy: { date: "asc" },
       }),
     ),
@@ -22,12 +25,41 @@ export const mealPlanRouter = router({
   upsert: capabilityProcedure("mealPlanEntry", "create")
     .input(mealPlanEntryInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const entry = await ctx.prisma.mealPlanEntry.upsert({
-        where: { householdId_date_mealType: { householdId: ctx.householdId, date: input.date, mealType: input.mealType } },
-        create: { ...input, householdId: ctx.householdId },
-        update: input,
-        include: { recipe: { select: { id: true, name: true, imageUrl: true } } },
+      let { recipeId, customTitle } = input;
+
+      // A custom-titled meal (no linked recipe) is saved as a bare recipe so
+      // it shows up in the "Pick a recipe" list next time instead of having
+      // to be retyped. Matches an existing recipe by name first so repeat
+      // entries of the same title don't create duplicates.
+      if (!recipeId && customTitle?.trim()) {
+        const name = customTitle.trim();
+        const existing = await ctx.prisma.recipe.findFirst({
+          where: { householdId: ctx.householdId, name: { equals: name, mode: "insensitive" } },
+        });
+        const recipe =
+          existing ??
+          (await ctx.prisma.recipe.create({
+            data: { householdId: ctx.householdId, name },
+          }));
+        recipeId = recipe.id;
+        customTitle = null;
+      }
+
+      // Prisma's compound-unique `where` can't match a NULL assigneeId (the
+      // "whole family" slot), so upsert manually instead of via the
+      // householdId_date_mealType_assigneeId compound key.
+      const assigneeId = input.assigneeId ?? null;
+      const data = { ...input, recipeId, customTitle, assigneeId };
+      const existing = await ctx.prisma.mealPlanEntry.findFirst({
+        where: { householdId: ctx.householdId, date: input.date, mealType: input.mealType, assigneeId },
       });
+      const include = {
+        recipe: { select: { id: true, name: true, imageUrl: true } },
+        assignee: { select: { id: true, name: true, colorHex: true } },
+      } as const;
+      const entry = existing
+        ? await ctx.prisma.mealPlanEntry.update({ where: { id: existing.id }, data, include })
+        : await ctx.prisma.mealPlanEntry.create({ data: { ...data, householdId: ctx.householdId }, include });
       await logAudit(ctx.prisma, {
         householdId: ctx.householdId,
         actorId: ctx.actor.id,
