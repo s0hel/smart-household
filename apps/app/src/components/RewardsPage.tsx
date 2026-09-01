@@ -6,6 +6,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, PersonB
 import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 import { toFamilyMemberView } from "@/lib/viewModels";
+import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 
 function RewardForm({ onClose }: { onClose: () => void }) {
   const utils = trpc.useUtils();
@@ -108,10 +109,13 @@ export function RewardsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl italic text-sapphire-800">Rewards</h1>
-        <div className="rounded-full bg-gold-50 px-4 py-1.5 text-sm font-semibold text-gold-700">
-          {myBalance} points
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-gold-50 px-4 py-1.5 text-sm font-semibold text-gold-700">
+            {myBalance} points
+          </div>
+          <ProfileSwitcher variant="pill" dropDirection="down" />
         </div>
       </div>
 
