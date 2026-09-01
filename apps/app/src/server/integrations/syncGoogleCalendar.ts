@@ -84,7 +84,12 @@ export async function syncGoogleCalendarAccount(prisma: PrismaClient, calendarAc
     const end = toDate(event.end) ?? start;
     if (!start || !end) continue;
 
-    const hash = canonicalHash(event.iCalUID ?? `google:${event.id}`);
+    // iCalUID alone identifies a recurring *series*, not one occurrence —
+    // every weekly instance of "Piano lesson" shares the same iCalUID.
+    // Folding in the occurrence's own start instant keeps same-occurrence
+    // cross-calendar dedup working while stopping different occurrences of
+    // the same series from collapsing into a single Event.
+    const hash = canonicalHash(`${event.iCalUID ?? `google:${event.id}`}|${start.date.toISOString()}`);
     const fields = {
       title: event.summary ?? "(untitled)",
       startAt: start.date,
