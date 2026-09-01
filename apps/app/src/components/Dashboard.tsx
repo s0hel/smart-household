@@ -2,7 +2,7 @@
 
 import { endOfDay, format, isToday, isTomorrow, startOfDay } from "date-fns";
 import Link from "next/link";
-import { cn, EventCard, TaskCard } from "@household/ui";
+import { cn, EventCard, PersonBadge, TaskCard, shadeColor } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 import { toEventView, toTaskView } from "@/lib/viewModels";
 
@@ -22,6 +22,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
   const meQuery = trpc.household.me.useQuery();
   const eventsQuery = trpc.event.list.useQuery();
   const tasksQuery = trpc.task.list.useQuery();
+  const { data: members } = trpc.familyMember.list.useQuery();
   const today = new Date();
   const mealPlanQuery = trpc.mealPlan.list.useQuery({ from: startOfDay(today), to: endOfDay(today) });
   const utils = trpc.useUtils();
@@ -35,6 +36,21 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
 
   const todayEvents = events.filter((e) => isToday(e.startAt));
   const tomorrowEvents = events.filter((e) => isTomorrow(e.startAt));
+
+  const tasksByAssignee = new Map<string, typeof tasks>();
+  const unassignedTasks: typeof tasks = [];
+  for (const task of tasks) {
+    if (task.assignee) {
+      const list = tasksByAssignee.get(task.assignee.id) ?? [];
+      list.push(task);
+      tasksByAssignee.set(task.assignee.id, list);
+    } else {
+      unassignedTasks.push(task);
+    }
+  }
+  const taskGroups = (members ?? [])
+    .filter((m) => tasksByAssignee.has(m.id))
+    .map((person) => ({ person, tasks: tasksByAssignee.get(person.id)! }));
 
   const isKiosk = variant === "kiosk";
   const mealPlanHref = variant === "mobile" ? "/m/meal-plan" : "/meal-plan";
@@ -60,16 +76,45 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-400">To Do</h2>
-        <div className="space-y-2">
+        <div className="space-y-4">
           {tasks.length === 0 && <p className="text-sm text-ink-400">No open tasks or chores.</p>}
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              canComplete={meQuery.data?.role !== "CHILD" || task.assignee?.id === meQuery.data?.id}
-              onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
-            />
+          {taskGroups.map(({ person, tasks: personTasks }) => (
+            <div key={person.id}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <PersonBadge person={person} size="sm" showName={false} />
+                <span className="text-xs font-semibold" style={{ color: shadeColor(person.colorHex) }}>
+                  {person.name}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {personTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    showAssignee={false}
+                    canComplete={meQuery.data?.role !== "CHILD" || task.assignee?.id === meQuery.data?.id}
+                    onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
+          {unassignedTasks.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-ink-400">Unassigned</p>
+              <div className="space-y-2">
+                {unassignedTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    showAssignee={false}
+                    canComplete={meQuery.data?.role !== "CHILD"}
+                    onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
