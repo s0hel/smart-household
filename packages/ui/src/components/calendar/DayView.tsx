@@ -19,7 +19,7 @@ export function DayView({
   const { positions, overflow } = layoutDayEvents(dayEvents);
 
   return (
-    <div className="flex flex-col overflow-y-auto rounded-2xl border border-ink-200 bg-white">
+    <div className="flex flex-col overflow-y-auto rounded-2xl border border-ink-200 bg-surface">
       {allDayEvents.length > 0 && (
         <div className="flex flex-wrap gap-1 border-b border-ink-100 p-2">
           {allDayEvents.map((event) => (

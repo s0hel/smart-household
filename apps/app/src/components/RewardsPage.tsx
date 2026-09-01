@@ -23,7 +23,7 @@ function RewardForm({ onClose }: { onClose: () => void }) {
 
   return (
     <form
-      className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4"
+      className="space-y-3 rounded-2xl border border-ink-200 bg-surface p-4"
       onSubmit={(e) => {
         e.preventDefault();
         createReward.mutate({ name, costPoints, requiresApproval });

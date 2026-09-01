@@ -7,47 +7,32 @@
  * neutral scale so text keeps a hint of the sapphire hue even at low saturation.
  * `household` is the distinct-person/category palette (jewel tones, chosen so
  * each also works as body text color on white — see PersonBadge).
+ *
+ * `paper`, `surface`, `ink`, `sapphire`, and `gold` are backed by CSS custom
+ * properties (see apps/app/src/app/globals.css) so the same utility classes
+ * (bg-paper, text-ink-900, bg-sapphire-600, ...) resolve to different actual
+ * colors depending on the `data-theme` attribute set by the theme switcher —
+ * no `dark:` variants needed anywhere in component code. `household` is left
+ * as plain hex and intentionally NOT themed: per-person badge colors are an
+ * identity, not a surface color, and should stay recognizable across themes.
  */
+function withOpacity(variableName) {
+  return `rgb(var(${variableName}) / <alpha-value>)`;
+}
+
+function themedScale(prefix, shades) {
+  return Object.fromEntries(shades.map((shade) => [shade, withOpacity(`--color-${prefix}-${shade}`)]));
+}
+
 module.exports = {
   theme: {
     extend: {
       colors: {
-        paper: "#FCFBF7",
-        sapphire: {
-          50: "#EEF3FA",
-          100: "#DCE7F4",
-          200: "#B7CCE8",
-          300: "#8FADD9",
-          400: "#5C82BE",
-          500: "#33578F",
-          600: "#1B3A6B",
-          700: "#15305A",
-          800: "#0F2440",
-          900: "#0B1B30",
-        },
-        gold: {
-          50: "#FBF6E7",
-          100: "#F5EAC2",
-          200: "#EAD68A",
-          300: "#DFC257",
-          400: "#D4AF37",
-          500: "#B8952E",
-          600: "#A8842A",
-          700: "#8A6A1E",
-          800: "#6B5218",
-        },
-        ink: {
-          50: "#F5F6F8",
-          100: "#E8EAEE",
-          200: "#D3D7DF",
-          300: "#AEB5C2",
-          400: "#7C859A",
-          500: "#5A6478",
-          600: "#3F495C",
-          700: "#2C3446",
-          800: "#1B2333",
-          900: "#0F1420",
-        },
+        paper: withOpacity("--color-paper"),
+        surface: withOpacity("--color-surface"),
+        sapphire: themedScale("sapphire", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+        gold: themedScale("gold", [50, 100, 200, 300, 400, 500, 600, 700, 800]),
+        ink: themedScale("ink", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
         household: {
           blue: "#2851A3",
           green: "#1F6F5C",

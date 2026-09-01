@@ -8,6 +8,7 @@ export * from "./components/Card";
 export * from "./components/Checkbox";
 export * from "./components/Input";
 export * from "./components/PersonBadge";
+export * from "./components/ThemeToggle";
 export * from "./components/EventCard";
 export * from "./components/TaskCard";
 export * from "./components/ListCard";

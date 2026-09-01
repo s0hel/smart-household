@@ -29,7 +29,7 @@ export function MonthView({
   const allDayItems = layoutAllDayBars(events, gridStart, days.length);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-ink-200 bg-surface">
       <div className="grid grid-cols-7 border-b border-ink-100 text-center text-xs font-medium uppercase text-ink-400">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div key={d} className="py-2">

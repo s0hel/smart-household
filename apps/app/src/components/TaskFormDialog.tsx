@@ -66,7 +66,7 @@ export function TaskFormDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-t-4 border-gold-400 bg-white shadow-xl">
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-t-4 border-gold-400 bg-surface shadow-xl">
         <div className="flex items-center justify-between p-6 pb-4">
           <h2 className="font-display text-lg italic text-sapphire-800">Manage tasks</h2>
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>

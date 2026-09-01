@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "next-themes";
 import { trpc } from "@/lib/trpc";
+import { THEMES } from "@household/ui";
 
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
@@ -27,10 +29,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </trpc.Provider>
-    </SessionProvider>
+    <ThemeProvider attribute="data-theme" defaultTheme="light" themes={THEMES.map((t) => t.value)}>
+      <SessionProvider>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </trpc.Provider>
+      </SessionProvider>
+    </ThemeProvider>
   );
 }

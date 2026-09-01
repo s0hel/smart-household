@@ -25,12 +25,15 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1B3A6B",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FCFBF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B0F17" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${bodoniModa.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${bodoniModa.variable}`} suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>

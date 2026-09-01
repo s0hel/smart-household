@@ -25,7 +25,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="rounded-2xl border-t-4 border-gold-400 bg-white p-8 shadow-sm">
+    <div className="rounded-2xl border-t-4 border-gold-400 bg-surface p-8 shadow-sm">
       <h1 className="mb-6 font-display text-2xl italic text-sapphire-800">Create your household</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>

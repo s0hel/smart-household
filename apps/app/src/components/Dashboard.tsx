@@ -130,7 +130,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
         <div className="space-y-2">
           {meals.length === 0 && <p className="text-sm text-ink-400">No meals planned today.</p>}
           {MEAL_TYPES.filter((mealType) => meals.some((m) => m.mealType === mealType)).map((mealType) => (
-            <div key={mealType} className="rounded-xl border border-ink-200 bg-white p-3">
+            <div key={mealType} className="rounded-xl border border-ink-200 bg-surface p-3">
               <p className="mb-1 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</p>
               <div className="space-y-1">
                 {meals

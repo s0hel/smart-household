@@ -32,7 +32,7 @@ export function WeekView({
   }
 
   return (
-    <div className="overflow-auto rounded-2xl border border-ink-200 bg-white">
+    <div className="overflow-auto rounded-2xl border border-ink-200 bg-surface">
       <div className="grid grid-cols-[4rem_repeat(7,minmax(9rem,1fr))]">
         <div />
         {days.map((day) => (

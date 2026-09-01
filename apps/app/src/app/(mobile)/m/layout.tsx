@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@household/ui";
+import { cn, ThemeToggle } from "@household/ui";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 
 const NAV = [
@@ -20,14 +20,17 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-paper">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-gold-400 bg-white/95 px-4 pb-3 backdrop-blur [padding-top:max(0.75rem,env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-gold-400 bg-surface/95 px-4 pb-3 backdrop-blur [padding-top:max(0.75rem,env(safe-area-inset-top))]">
         <span className="font-display text-lg italic text-sapphire-800">Household</span>
-        <ProfileSwitcher dropDirection="down" triggerClassName="p-1.5" />
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle collapsed dropDirection="down" />
+          <ProfileSwitcher dropDirection="down" triggerClassName="p-1.5" />
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 pb-24">{children}</main>
 
-      <nav className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 border-t-2 border-gold-400 bg-white/95 backdrop-blur [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 border-t-2 border-gold-400 bg-surface/95 backdrop-blur [padding-bottom:max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="flex gap-0.5 overflow-x-auto px-1 pt-1.5">
           {NAV.map((item) => {
             const active = item.href === "/m" ? pathname === "/m" : pathname.startsWith(item.href);

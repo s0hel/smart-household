@@ -53,7 +53,7 @@ export function EventCard({
         >
           {event.title}
         </span>
-        <span className="truncate text-[10px] text-ink-500">
+        <span className="truncate text-[10px]" style={{ color: shadeColor(primaryAccent, 0.2) }}>
           {formatTimeRange(event)}
           {otherAssignees.length > 0 && <span className="ml-1 font-medium">+{otherAssignees.length}</span>}
         </span>
@@ -73,13 +73,18 @@ export function EventCard({
       style={{ borderLeftColor: primaryAccent, background: colorBackground(accentColors, (c) => tintColor(c, 0.92)) }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={cn("min-w-0 truncate font-semibold text-ink-900", compact ? "text-sm" : "text-base")}>
+        <span
+          className={cn("min-w-0 truncate font-semibold", compact ? "text-sm" : "text-base")}
+          style={{ color: shadeColor(primaryAccent) }}
+        >
           {event.title}
         </span>
-        <span className="whitespace-nowrap text-xs text-ink-500">{formatTimeRange(event)}</span>
+        <span className="whitespace-nowrap text-xs" style={{ color: shadeColor(primaryAccent, 0.2) }}>
+          {formatTimeRange(event)}
+        </span>
       </div>
       {!compact && (event.location || event.travelTimeMinutes) && (
-        <div className="text-xs text-ink-500">
+        <div className="text-xs" style={{ color: shadeColor(primaryAccent, 0.2) }}>
           {event.location && (
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
@@ -102,9 +107,13 @@ export function EventCard({
         </div>
       )}
       {!compact && event.checklist.length > 0 && (
-        <ul className="mt-1 space-y-0.5 text-xs text-ink-600">
+        <ul className="mt-1 space-y-0.5 text-xs" style={{ color: shadeColor(primaryAccent, 0.25) }}>
           {event.checklist.map((item) => (
-            <li key={item.id} className={cn(item.checked && "text-ink-400 line-through")}>
+            <li
+              key={item.id}
+              className={cn(item.checked && "line-through")}
+              style={item.checked ? { color: shadeColor(primaryAccent, 0.12) } : undefined}
+            >
               ☑ {item.label}
             </li>
           ))}

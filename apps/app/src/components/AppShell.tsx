@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@household/ui";
+import { cn, ThemeToggle } from "@household/ui";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import {
   CalendarIcon,
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <aside
         className={cn(
-          "relative flex shrink-0 flex-col justify-between border-r border-ink-200 bg-white p-4 transition-[width] duration-200",
+          "relative flex shrink-0 flex-col justify-between border-r border-ink-200 bg-surface p-4 transition-[width] duration-200",
           collapsed ? "w-20" : "w-56",
         )}
       >
@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute -right-3 top-8 flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-500 shadow-sm hover:bg-ink-100"
+          className="absolute -right-3 top-8 flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 bg-surface text-ink-500 shadow-sm hover:bg-ink-100"
         >
           <ChevronLeftIcon className={cn("h-3.5 w-3.5 transition-transform", collapsed && "rotate-180")} />
         </button>
@@ -115,7 +115,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </div>
-        <ProfileSwitcher collapsed={collapsed} />
+        <div className="space-y-2">
+          <ThemeToggle collapsed={collapsed} dropDirection="up" className="w-full" />
+          <ProfileSwitcher collapsed={collapsed} />
+        </div>
       </aside>
       <main className="flex-1 overflow-y-auto p-6">{children}</main>
     </div>

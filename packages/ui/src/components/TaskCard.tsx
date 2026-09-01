@@ -91,7 +91,7 @@ export function TaskCard({
         </span>
       )}
 
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xl">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-xl">
         {task.icon || taskEmoji(task)}
       </span>
 
@@ -103,7 +103,10 @@ export function TaskCard({
           {task.title}
         </span>
         {(task.dueAt || task.points > 0) && (
-          <span className={cn("flex items-center gap-2 text-xs", completed ? "text-white/85" : "text-ink-500")}>
+          <span
+            className={cn("flex items-center gap-2 text-xs", completed && "text-white/85")}
+            style={completed ? undefined : { color: shadeColor(accent, 0.2) }}
+          >
             {task.dueAt && (
               <span>Due {task.dueAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
             )}
@@ -116,7 +119,7 @@ export function TaskCard({
         <PersonBadge person={task.assignee} size="sm" showName={false} />
       )}
 
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
         {completed && (
           <svg
             viewBox="0 0 24 24"

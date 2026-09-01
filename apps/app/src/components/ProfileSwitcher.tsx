@@ -50,7 +50,7 @@ export function ProfileSwitcher({
           "flex items-center gap-2 rounded-xl p-2 text-left hover:bg-ink-100",
           collapsed && "justify-center",
           variant === "pill" &&
-            "rounded-full border border-ink-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm hover:bg-ink-50",
+            "rounded-full border border-ink-200 bg-surface py-1.5 pl-1.5 pr-3 shadow-sm hover:bg-ink-50",
           triggerClassName ?? "w-full",
         )}
       >
@@ -66,7 +66,7 @@ export function ProfileSwitcher({
       {open && (
         <div
           className={cn(
-            "absolute z-10 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg",
+            "absolute z-10 w-64 rounded-xl border border-ink-200 bg-surface p-2 shadow-lg",
             dropDirection === "up" ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2",
           )}
         >

@@ -63,7 +63,7 @@ function AssignMealPopover({
   return (
     <div
       className={cn(
-        "rounded-xl border border-ink-200 bg-white p-3 shadow-lg",
+        "rounded-xl border border-ink-200 bg-surface p-3 shadow-lg",
         inline ? "mt-2 w-full" : "absolute z-10 mt-1 w-56",
       )}
     >
@@ -166,7 +166,7 @@ function RecipeForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
+    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-ink-200 bg-surface p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="col-span-2">
           <Label htmlFor="recipe-name">Name</Label>
@@ -320,7 +320,7 @@ export function MealPlanPage({ variant = "web" }: { variant?: "web" | "mobile" }
               const isEditing =
                 editingCell?.mealType === mealType && editingCell.date.toDateString() === selectedDay.toDateString();
               return (
-                <div key={mealType} className="rounded-xl border border-ink-200 bg-white p-3">
+                <div key={mealType} className="rounded-xl border border-ink-200 bg-surface p-3">
                   <p className="mb-1 text-xs font-semibold uppercase text-ink-400">{MEAL_LABELS[mealType]}</p>
                   {mealEntries.length > 0 && (
                     <div className="space-y-1">

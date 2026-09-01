@@ -7,6 +7,172 @@ body {
   height: 100%;
 }
 
+/*
+ * Theme tokens. Each block sets the RGB channels (space-separated, no `rgb()`
+ * wrapper) consumed by the Tailwind preset via `rgb(var(--color-x) / <alpha-value>)`.
+ * The active theme is selected by `data-theme` on <html>, set by next-themes
+ * (see providers.tsx / ThemeToggle) and persisted to localStorage.
+ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-paper: 252 251 247;
+  --color-surface: 255 255 255;
+
+  --color-ink-50: 245 246 248;
+  --color-ink-100: 232 234 238;
+  --color-ink-200: 211 215 223;
+  --color-ink-300: 174 181 194;
+  --color-ink-400: 124 133 154;
+  --color-ink-500: 90 100 120;
+  --color-ink-600: 63 73 92;
+  --color-ink-700: 44 52 70;
+  --color-ink-800: 27 35 51;
+  --color-ink-900: 15 20 32;
+
+  --color-sapphire-50: 238 243 250;
+  --color-sapphire-100: 220 231 244;
+  --color-sapphire-200: 183 204 232;
+  --color-sapphire-300: 143 173 217;
+  --color-sapphire-400: 92 130 190;
+  --color-sapphire-500: 51 87 143;
+  --color-sapphire-600: 27 58 107;
+  --color-sapphire-700: 21 48 90;
+  --color-sapphire-800: 15 36 64;
+  --color-sapphire-900: 11 27 48;
+
+  --color-gold-50: 251 246 231;
+  --color-gold-100: 245 234 194;
+  --color-gold-200: 234 214 138;
+  --color-gold-300: 223 194 87;
+  --color-gold-400: 212 175 55;
+  --color-gold-500: 184 149 46;
+  --color-gold-600: 168 132 42;
+  --color-gold-700: 138 106 30;
+  --color-gold-800: 107 82 24;
+}
+
+/* Dark — same navy-sapphire identity, inverted for a near-black ground. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-paper: 11 15 23;
+  --color-surface: 19 26 38;
+
+  --color-ink-50: 27 35 51;
+  --color-ink-100: 35 44 64;
+  --color-ink-200: 44 52 70;
+  --color-ink-300: 63 73 92;
+  --color-ink-400: 90 100 120;
+  --color-ink-500: 124 133 154;
+  --color-ink-600: 174 181 194;
+  --color-ink-700: 211 215 223;
+  --color-ink-800: 232 234 238;
+  --color-ink-900: 245 246 248;
+
+  --color-sapphire-50: 18 25 42;
+  --color-sapphire-100: 24 34 56;
+  --color-sapphire-200: 31 46 74;
+  --color-sapphire-300: 42 63 99;
+  --color-sapphire-400: 50 82 132;
+  --color-sapphire-500: 56 97 160;
+  --color-sapphire-600: 61 111 192;
+  --color-sapphire-700: 92 134 204;
+  --color-sapphire-800: 143 173 217;
+  --color-sapphire-900: 183 204 232;
+
+  --color-gold-50: 42 34 16;
+  --color-gold-100: 54 43 18;
+  --color-gold-200: 74 58 24;
+  --color-gold-300: 107 82 24;
+  --color-gold-400: 212 175 55;
+  --color-gold-500: 223 194 87;
+  --color-gold-600: 234 214 138;
+  --color-gold-700: 240 223 160;
+  --color-gold-800: 245 234 194;
+}
+
+/* Meadow — sapphire swapped for forest green, gold trim unchanged. */
+[data-theme="meadow"] {
+  color-scheme: light;
+
+  --color-paper: 250 251 246;
+  --color-surface: 255 255 255;
+
+  --color-ink-50: 245 246 248;
+  --color-ink-100: 232 234 238;
+  --color-ink-200: 211 215 223;
+  --color-ink-300: 174 181 194;
+  --color-ink-400: 124 133 154;
+  --color-ink-500: 90 100 120;
+  --color-ink-600: 63 73 92;
+  --color-ink-700: 44 52 70;
+  --color-ink-800: 27 35 51;
+  --color-ink-900: 15 20 32;
+
+  --color-sapphire-50: 238 247 238;
+  --color-sapphire-100: 217 238 218;
+  --color-sapphire-200: 179 221 182;
+  --color-sapphire-300: 134 199 140;
+  --color-sapphire-400: 87 172 99;
+  --color-sapphire-500: 59 138 72;
+  --color-sapphire-600: 39 107 52;
+  --color-sapphire-700: 31 86 41;
+  --color-sapphire-800: 23 66 31;
+  --color-sapphire-900: 15 47 22;
+
+  --color-gold-50: 251 246 231;
+  --color-gold-100: 245 234 194;
+  --color-gold-200: 234 214 138;
+  --color-gold-300: 223 194 87;
+  --color-gold-400: 212 175 55;
+  --color-gold-500: 184 149 46;
+  --color-gold-600: 168 132 42;
+  --color-gold-700: 138 106 30;
+  --color-gold-800: 107 82 24;
+}
+
+/* Sunset — sapphire swapped for terracotta, gold swapped for warm amber. */
+[data-theme="sunset"] {
+  color-scheme: light;
+
+  --color-paper: 253 249 245;
+  --color-surface: 255 255 255;
+
+  --color-ink-50: 245 246 248;
+  --color-ink-100: 232 234 238;
+  --color-ink-200: 211 215 223;
+  --color-ink-300: 174 181 194;
+  --color-ink-400: 124 133 154;
+  --color-ink-500: 90 100 120;
+  --color-ink-600: 63 73 92;
+  --color-ink-700: 44 52 70;
+  --color-ink-800: 27 35 51;
+  --color-ink-900: 15 20 32;
+
+  --color-sapphire-50: 251 239 234;
+  --color-sapphire-100: 246 219 206;
+  --color-sapphire-200: 237 184 157;
+  --color-sapphire-300: 224 147 111;
+  --color-sapphire-400: 207 111 71;
+  --color-sapphire-500: 184 84 47;
+  --color-sapphire-600: 156 66 34;
+  --color-sapphire-700: 126 53 28;
+  --color-sapphire-800: 96 39 21;
+  --color-sapphire-900: 67 27 15;
+
+  --color-gold-50: 253 243 228;
+  --color-gold-100: 250 227 188;
+  --color-gold-200: 243 200 127;
+  --color-gold-300: 235 172 78;
+  --color-gold-400: 224 146 46;
+  --color-gold-500: 199 122 34;
+  --color-gold-600: 168 99 28;
+  --color-gold-700: 133 80 21;
+  --color-gold-800: 94 58 15;
+}
+
 body {
   @apply bg-paper text-ink-900;
 }
