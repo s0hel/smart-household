@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { EventView } from "../../types";
-import { DAY_START_HOUR, HOUR_HEIGHT_PX, eventPosition, eventsOnDay, hoursOfDay } from "./calendarMath";
+import { DAY_START_HOUR, HOUR_HEIGHT_PX, eventsOnDay, hoursOfDay, layoutDayEvents } from "./calendarMath";
 import { EventCard } from "../EventCard";
 
 export function DayView({
@@ -13,6 +13,7 @@ export function DayView({
   onEventClick?: (event: EventView) => void;
 }) {
   const dayEvents = eventsOnDay(events, day);
+  const positions = layoutDayEvents(dayEvents);
 
   return (
     <div className="flex overflow-y-auto rounded-2xl border border-ink-200 bg-white">
@@ -29,9 +30,18 @@ export function DayView({
           <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
         ))}
         {dayEvents.map((event) => {
-          const { top, height } = eventPosition(event);
+          const { top, height, left, width } = positions.get(event.id)!;
           return (
-            <div key={event.id} className="absolute left-1 right-1" style={{ top, height }}>
+            <div
+              key={event.id}
+              className="absolute"
+              style={{
+                top,
+                height,
+                left: `calc(${left * 100}% + 4px)`,
+                width: `calc(${width * 100}% - 8px)`,
+              }}
+            >
               <EventCard
                 event={event}
                 compact

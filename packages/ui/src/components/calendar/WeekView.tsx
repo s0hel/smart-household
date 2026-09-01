@@ -1,7 +1,7 @@
 import * as React from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import type { EventView } from "../../types";
-import { HOUR_HEIGHT_PX, eventPosition, eventsOnDay, hoursOfDay } from "./calendarMath";
+import { HOUR_HEIGHT_PX, eventsOnDay, hoursOfDay, layoutDayEvents } from "./calendarMath";
 import { EventCard } from "../EventCard";
 
 export function WeekView({
@@ -38,15 +38,25 @@ export function WeekView({
           </div>
           {days.map((day) => {
             const dayEvents = eventsOnDay(events, day);
+            const positions = layoutDayEvents(dayEvents);
             return (
               <div key={day.toISOString()} className="relative border-l border-ink-100">
                 {hoursOfDay().map((hour) => (
                   <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
                 ))}
                 {dayEvents.map((event) => {
-                  const { top, height } = eventPosition(event);
+                  const { top, height, left, width } = positions.get(event.id)!;
                   return (
-                    <div key={event.id} className="absolute left-0.5 right-0.5" style={{ top, height }}>
+                    <div
+                      key={event.id}
+                      className="absolute"
+                      style={{
+                        top,
+                        height,
+                        left: `calc(${left * 100}% + 2px)`,
+                        width: `calc(${width * 100}% - 4px)`,
+                      }}
+                    >
                       <EventCard
                         event={event}
                         compact
