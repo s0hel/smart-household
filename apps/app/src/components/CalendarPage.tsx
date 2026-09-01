@@ -8,6 +8,7 @@ import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 import { toEventView } from "@/lib/viewModels";
 import { EventFormDialog } from "./EventFormDialog";
+import { EventDetailsDialog } from "./EventDetailsDialog";
 
 const WEB_MODES: CalendarMode[] = ["day", "week", "month", "agenda"];
 // Week view needs ~9rem per day column — never fits a phone screen, so it's
@@ -19,10 +20,16 @@ export function CalendarPage({ variant = "web" }: { variant?: "web" | "mobile" }
   const MODES = variant === "mobile" ? MOBILE_MODES : WEB_MODES;
   const [mode, setMode] = React.useState<CalendarMode>(variant === "mobile" ? "day" : "week");
   const [anchorDate, setAnchorDate] = React.useState(new Date());
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; date: Date; editing: EventView | null }>({
+  const [dialogState, setDialogState] = React.useState<{
+    open: boolean;
+    date: Date;
+    editing: EventView | null;
+    mode: "view" | "edit";
+  }>({
     open: false,
     date: new Date(),
     editing: null,
+    mode: "view",
   });
 
   const eventsQuery = trpc.event.list.useQuery();
@@ -43,11 +50,11 @@ export function CalendarPage({ variant = "web" }: { variant?: "web" | "mobile" }
   }
 
   function openCreate(date: Date) {
-    setDialogState({ open: true, date, editing: null });
+    setDialogState({ open: true, date, editing: null, mode: "edit" });
   }
 
-  function openEdit(event: EventView) {
-    setDialogState({ open: true, date: event.startAt, editing: event });
+  function openView(event: EventView) {
+    setDialogState({ open: true, date: event.startAt, editing: event, mode: "view" });
   }
 
   const editingRaw = dialogState.editing ? rawEvents.find((e) => e.id === dialogState.editing!.id) : null;
@@ -95,7 +102,7 @@ export function CalendarPage({ variant = "web" }: { variant?: "web" | "mobile" }
         mode={mode}
         anchorDate={anchorDate}
         events={events}
-        onEventClick={canManage ? openEdit : undefined}
+        onEventClick={openView}
         onDayClick={canManage ? openCreate : undefined}
       />
 
@@ -112,7 +119,16 @@ export function CalendarPage({ variant = "web" }: { variant?: "web" | "mobile" }
         </div>
       )}
 
-      {dialogState.open && canManage && (
+      {dialogState.open && dialogState.mode === "view" && dialogState.editing && (
+        <EventDetailsDialog
+          event={dialogState.editing}
+          canManage={canManage}
+          onEdit={() => setDialogState((s) => ({ ...s, mode: "edit" }))}
+          onClose={() => setDialogState((s) => ({ ...s, open: false }))}
+        />
+      )}
+
+      {dialogState.open && dialogState.mode === "edit" && canManage && (
         <EventFormDialog
           initialDate={dialogState.date}
           editing={editingRaw ?? null}

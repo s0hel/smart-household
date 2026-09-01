@@ -80,7 +80,17 @@ export function EventCard({
       </div>
       {!compact && (event.location || event.travelTimeMinutes) && (
         <div className="text-xs text-ink-500">
-          {event.location && <span>📍 {event.location}</span>}
+          {event.location && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="underline-offset-2 hover:underline"
+            >
+              📍 {event.location}
+            </a>
+          )}
           {event.travelTimeMinutes != null && <span className="ml-2">🚗 {event.travelTimeMinutes} min drive</span>}
         </div>
       )}
