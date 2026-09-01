@@ -1,6 +1,7 @@
 import * as React from "react";
 import { addDays, endOfMonth, format, isSameMonth, isToday, startOfMonth, startOfWeek } from "date-fns";
 import { cn } from "../../cn";
+import { colorBackground, eventAccentColors } from "../../colorUtils";
 import type { EventView } from "../../types";
 import { eventsOnDay } from "./calendarMath";
 
@@ -62,7 +63,7 @@ export function MonthView({
                       onEventClick?.(event);
                     }}
                     className="truncate rounded px-1 py-0.5 text-[11px] font-medium text-white"
-                    style={{ backgroundColor: event.colorHex }}
+                    style={{ background: colorBackground(eventAccentColors(event)) }}
                   >
                     {event.title}
                   </span>

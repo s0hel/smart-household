@@ -13,7 +13,7 @@ export function DayView({
   onEventClick?: (event: EventView) => void;
 }) {
   const dayEvents = eventsOnDay(events, day);
-  const positions = layoutDayEvents(dayEvents);
+  const { positions, overflow } = layoutDayEvents(dayEvents);
 
   return (
     <div className="flex overflow-y-auto rounded-2xl border border-ink-200 bg-white">
@@ -30,7 +30,9 @@ export function DayView({
           <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
         ))}
         {dayEvents.map((event) => {
-          const { top, height, left, width } = positions.get(event.id)!;
+          const position = positions.get(event.id);
+          if (!position) return null;
+          const { top, height, left, width } = position;
           return (
             <div
               key={event.id}
@@ -45,13 +47,22 @@ export function DayView({
               <EventCard
                 event={event}
                 compact
-                dense={height < 48}
+                dense={height < 48 || width < 1}
                 onClick={() => onEventClick?.(event)}
                 className="h-full"
               />
             </div>
           );
         })}
+        {overflow.map((chip, i) => (
+          <div
+            key={i}
+            className="absolute inset-x-1 flex items-center justify-center rounded bg-ink-700/85 text-[10px] font-medium text-white"
+            style={{ top: chip.top, height: chip.height }}
+          >
+            +{chip.count} more
+          </div>
+        ))}
         {dayEvents.length === 0 && (
           <p className="absolute inset-x-0 top-4 text-center text-sm text-ink-400">Nothing scheduled today.</p>
         )}

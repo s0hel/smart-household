@@ -1,4 +1,5 @@
 export * from "./cn";
+export * from "./colorUtils";
 export * from "./types";
 export * from "./components/Button";
 export * from "./components/Card";

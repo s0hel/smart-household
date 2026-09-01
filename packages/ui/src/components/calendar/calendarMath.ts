@@ -47,6 +47,26 @@ export interface LayoutPosition {
   width: number;
 }
 
+/** An indicator for events beyond MAX_VISIBLE_COLUMNS that got folded away instead of rendered. */
+export interface OverflowChip {
+  top: number;
+  height: number;
+  count: number;
+}
+
+export interface DayLayout {
+  positions: Map<string, LayoutPosition>;
+  overflow: OverflowChip[];
+}
+
+/**
+ * Beyond this many side-by-side columns, additional simultaneous events get
+ * folded into a single "+N more" chip instead of shrinking every column
+ * further — a 4th or 5th sliver stops being readable long before it stops
+ * being narrow.
+ */
+export const MAX_VISIBLE_COLUMNS = 2;
+
 /**
  * Assigns each event a side-by-side column within its cluster of
  * time-overlapping events, so simultaneous events (e.g. two kids' lessons at
@@ -54,7 +74,7 @@ export interface LayoutPosition {
  * another. `dayEvents` must already be sorted by start time (eventsOnDay
  * does this).
  */
-export function layoutDayEvents(dayEvents: EventView[]): Map<string, LayoutPosition> {
+export function layoutDayEvents(dayEvents: EventView[]): DayLayout {
   const items = dayEvents.map((event) => {
     const { top, height } = eventPosition(event);
     return { event, start: top, end: top + height, col: -1, clusterId: -1 };
@@ -66,6 +86,14 @@ export function layoutDayEvents(dayEvents: EventView[]): Map<string, LayoutPosit
     if (item.start >= clusterEnd) clusterId++;
     item.clusterId = clusterId;
     clusterEnd = Math.max(clusterEnd, item.end);
+  }
+
+  const clusterBounds = new Map<number, { top: number; bottom: number }>();
+  for (const item of items) {
+    const bounds = clusterBounds.get(item.clusterId) ?? { top: item.start, bottom: item.end };
+    bounds.top = Math.min(bounds.top, item.start);
+    bounds.bottom = Math.max(bounds.bottom, item.end);
+    clusterBounds.set(item.clusterId, bounds);
   }
 
   const clusterColumnEnds = new Map<number, number[]>();
@@ -80,8 +108,13 @@ export function layoutDayEvents(dayEvents: EventView[]): Map<string, LayoutPosit
   }
 
   const positions = new Map<string, LayoutPosition>();
+  const hiddenCountByCluster = new Map<number, number>();
   for (const item of items) {
-    const cols = clusterMaxCols.get(item.clusterId) ?? 1;
+    const cols = Math.min(clusterMaxCols.get(item.clusterId) ?? 1, MAX_VISIBLE_COLUMNS);
+    if (item.col >= MAX_VISIBLE_COLUMNS) {
+      hiddenCountByCluster.set(item.clusterId, (hiddenCountByCluster.get(item.clusterId) ?? 0) + 1);
+      continue;
+    }
     positions.set(item.event.id, {
       top: item.start,
       height: item.end - item.start,
@@ -89,5 +122,16 @@ export function layoutDayEvents(dayEvents: EventView[]): Map<string, LayoutPosit
       width: 1 / cols,
     });
   }
-  return positions;
+
+  // Anchored to the bottom of the cluster's time range, where dense cards
+  // (vertically centered content) tend to have empty padding, so the chip
+  // doesn't sit on top of a visible card's title/avatar.
+  const CHIP_HEIGHT = 16;
+  const overflow: OverflowChip[] = [];
+  for (const [id, count] of hiddenCountByCluster) {
+    const bounds = clusterBounds.get(id)!;
+    overflow.push({ top: Math.max(bounds.top, bounds.bottom - CHIP_HEIGHT), height: CHIP_HEIGHT, count });
+  }
+
+  return { positions, overflow };
 }

@@ -38,14 +38,16 @@ export function WeekView({
           </div>
           {days.map((day) => {
             const dayEvents = eventsOnDay(events, day);
-            const positions = layoutDayEvents(dayEvents);
+            const { positions, overflow } = layoutDayEvents(dayEvents);
             return (
               <div key={day.toISOString()} className="relative border-l border-ink-100">
                 {hoursOfDay().map((hour) => (
                   <div key={hour} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-ink-50" />
                 ))}
                 {dayEvents.map((event) => {
-                  const { top, height, left, width } = positions.get(event.id)!;
+                  const position = positions.get(event.id);
+                  if (!position) return null;
+                  const { top, height, left, width } = position;
                   return (
                     <div
                       key={event.id}
@@ -60,13 +62,22 @@ export function WeekView({
                       <EventCard
                         event={event}
                         compact
-                        dense={height < 48}
+                        dense={height < 48 || width < 1}
                         onClick={() => onEventClick?.(event)}
                         className="h-full"
                       />
                     </div>
                   );
                 })}
+                {overflow.map((chip, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-x-0.5 flex items-center justify-center rounded bg-ink-700/85 text-[10px] font-medium text-white"
+                    style={{ top: chip.top, height: chip.height }}
+                  >
+                    +{chip.count} more
+                  </div>
+                ))}
               </div>
             );
           })}
