@@ -2,119 +2,126 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
-import { Button, Input, Label, TaskCard, cn } from "@household/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, PersonBadge, TaskCard, cn, shadeColor, tintColor } from "@household/ui";
 import { can, type Role } from "@household/domain";
 import { trpc } from "@/lib/trpc";
 import { toTaskView } from "@/lib/viewModels";
+import { TaskFormDialog } from "./TaskFormDialog";
 
 export function TasksPage({ variant = "web" }: { variant?: "web" | "mobile" } = {}) {
   const { data: session } = useSession();
   const utils = trpc.useUtils();
   const tasksQuery = trpc.task.list.useQuery();
   const { data: members } = trpc.familyMember.list.useQuery();
-  const createTask = trpc.task.create.useMutation({ onSuccess: () => utils.task.list.invalidate() });
-  const deleteTask = trpc.task.delete.useMutation({ onSuccess: () => utils.task.list.invalidate() });
   const setCompletion = trpc.task.setCompletion.useMutation({ onSuccess: () => utils.task.list.invalidate() });
 
-  const [title, setTitle] = React.useState("");
-  const [assigneeId, setAssigneeId] = React.useState("");
-  const [points, setPoints] = React.useState(0);
-  const [type, setType] = React.useState<"ONE_TIME" | "RECURRING" | "CHORE" | "ROUTINE">("CHORE");
+  const [manageOpen, setManageOpen] = React.useState(false);
 
   const activeRole = (members?.find((m) => m.id === session?.user.activeProfileId)?.role ?? "READONLY") as Role;
   const canManage = can(activeRole, "task", "create");
 
-  async function onCreate(e: React.FormEvent) {
-    e.preventDefault();
-    await createTask.mutateAsync({ title, type, assigneeId: assigneeId || null, points });
-    setTitle("");
-    setPoints(0);
-  }
-
   const tasks = (tasksQuery.data ?? []).map(toTaskView);
 
+  const tasksByAssignee = new Map<string, typeof tasks>();
+  const unassignedTasks: typeof tasks = [];
+  for (const task of tasks) {
+    if (task.assignee) {
+      const list = tasksByAssignee.get(task.assignee.id) ?? [];
+      list.push(task);
+      tasksByAssignee.set(task.assignee.id, list);
+    } else {
+      unassignedTasks.push(task);
+    }
+  }
+  const groups = (members ?? [])
+    .filter((m) => tasksByAssignee.has(m.id))
+    .map((person) => ({ person, tasks: tasksByAssignee.get(person.id)! }));
+
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="font-display text-2xl italic text-sapphire-800">Tasks &amp; Chores</h1>
-
-      {canManage && (
-        <form
-          onSubmit={onCreate}
-          className={cn(
-            "gap-3 rounded-2xl border border-ink-200 bg-white p-4",
-            variant === "mobile" ? "flex flex-col" : "flex flex-wrap items-end",
-          )}
-        >
-          <div className={variant === "mobile" ? "w-full" : "flex-1"}>
-            <Label htmlFor="task-title">Title</Label>
-            <Input id="task-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className={variant === "mobile" ? "w-full" : ""}>
-            <Label htmlFor="task-type">Type</Label>
-            <select
-              id="task-type"
-              className="h-10 w-full rounded-lg border border-ink-300 px-2 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as typeof type)}
-            >
-              <option value="CHORE">Chore</option>
-              <option value="ROUTINE">Routine</option>
-              <option value="ONE_TIME">One-time</option>
-              <option value="RECURRING">Recurring</option>
-            </select>
-          </div>
-          <div className={variant === "mobile" ? "w-full" : ""}>
-            <Label htmlFor="task-assignee">Assignee</Label>
-            <select
-              id="task-assignee"
-              className="h-10 w-full rounded-lg border border-ink-300 px-2 text-sm"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {(members ?? []).map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={variant === "mobile" ? "w-full" : "w-24"}>
-            <Label htmlFor="task-points">Points</Label>
-            <Input
-              id="task-points"
-              type="number"
-              min={0}
-              value={points}
-              onChange={(e) => setPoints(Number(e.target.value))}
-            />
-          </div>
-          <Button type="submit" className={variant === "mobile" ? "w-full" : undefined}>
-            Add
+    <div className={cn("space-y-6", variant === "mobile" ? "max-w-2xl" : "max-w-5xl")}>
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-2xl italic text-sapphire-800">Tasks &amp; Chores</h1>
+        {canManage && variant !== "mobile" && (
+          <Button size="sm" onClick={() => setManageOpen(true)}>
+            + Manage tasks
           </Button>
-        </form>
-      )}
+        )}
+      </div>
 
-      <div className="space-y-2">
-        {tasks.map((task) => (
-          <div key={task.id} className="group relative">
-            <TaskCard
-              task={task}
-              canComplete={activeRole !== "CHILD" || task.assignee?.id === session?.user.activeProfileId}
-              onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
-            />
-            {canManage && (
-              <button
-                onClick={() => deleteTask.mutate({ id: task.id })}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-60 hover:opacity-100"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        ))}
+      <div
+        className={cn(
+          "gap-4",
+          variant === "mobile" ? "flex flex-col" : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3",
+        )}
+      >
+        {groups.map(({ person, tasks: personTasks }) => {
+          const completedCount = personTasks.filter((t) => t.completedToday).length;
+          const totalPoints = personTasks.reduce((sum, t) => sum + t.points, 0);
+          return (
+            <Card key={person.id} style={{ borderColor: tintColor(person.colorHex, 0.6) }}>
+              <CardHeader className="items-center justify-start gap-3 pb-3">
+                <PersonBadge person={person} size="md" showName={false} />
+                <div>
+                  <p className="font-display text-lg italic" style={{ color: shadeColor(person.colorHex) }}>
+                    {person.name}
+                  </p>
+                  <p className="text-xs text-ink-500">
+                    ✓ {completedCount}/{personTasks.length}
+                    {totalPoints > 0 && <> &middot; {totalPoints} ⭐</>}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-1">
+                {personTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    showAssignee={false}
+                    canComplete={activeRole !== "CHILD" || task.assignee?.id === session?.user.activeProfileId}
+                    onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {unassignedTasks.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Unassigned</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-1">
+              {unassignedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  showAssignee={false}
+                  canComplete={activeRole !== "CHILD"}
+                  onToggleComplete={(completed) => setCompletion.mutate({ taskId: task.id, completed })}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {tasks.length === 0 && <p className="text-sm text-ink-400">No tasks yet.</p>}
       </div>
+
+      {canManage && variant === "mobile" && (
+        <div className="fixed inset-x-0 bottom-24 z-10 mx-auto flex max-w-md justify-end px-4">
+          <button
+            type="button"
+            onClick={() => setManageOpen(true)}
+            aria-label="Manage tasks"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-sapphire-600 text-2xl leading-none text-white shadow-lg transition active:scale-95"
+          >
+            +
+          </button>
+        </div>
+      )}
+
+      {manageOpen && canManage && <TaskFormDialog onClose={() => setManageOpen(false)} />}
     </div>
   );
 }

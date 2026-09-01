@@ -1,5 +1,7 @@
 export * from "./cn";
 export * from "./colorUtils";
+export * from "./taskEmoji";
+export * from "./taskIcons";
 export * from "./types";
 export * from "./components/Button";
 export * from "./components/Card";

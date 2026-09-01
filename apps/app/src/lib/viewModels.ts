@@ -50,6 +50,7 @@ interface RawTask {
   id: string;
   title: string;
   type: string;
+  icon?: string | null;
   points: number;
   dueAt?: Date | null;
   assignee?: RawUser | null;
@@ -62,6 +63,7 @@ export function toTaskView(task: RawTask): TaskView {
     id: task.id,
     title: task.title,
     type: task.type as TaskView["type"],
+    icon: task.icon,
     points: task.points,
     dueAt: task.dueAt ? new Date(task.dueAt) : null,
     assignee: task.assignee ? toFamilyMemberView(task.assignee) : null,

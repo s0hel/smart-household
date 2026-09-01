@@ -63,6 +63,20 @@ module.exports = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Georgia", "serif"],
       },
+      keyframes: {
+        "task-burst": {
+          "0%": { transform: "translate(-50%, -50%) scale(0.4)", opacity: "1" },
+          "60%": { opacity: "1" },
+          "100%": {
+            transform:
+              "translate(calc(-50% + var(--burst-x, 0px)), calc(-50% + var(--burst-y, 0px))) scale(1.1)",
+            opacity: "0",
+          },
+        },
+      },
+      animation: {
+        "task-burst": "task-burst 700ms ease-out forwards",
+      },
     },
   },
 };

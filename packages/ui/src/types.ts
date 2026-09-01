@@ -31,6 +31,7 @@ export interface TaskView {
   id: string;
   title: string;
   type: "ONE_TIME" | "RECURRING" | "CHORE" | "ROUTINE";
+  icon?: string | null;
   points: number;
   dueAt?: Date | null;
   assignee?: FamilyMemberView | null;

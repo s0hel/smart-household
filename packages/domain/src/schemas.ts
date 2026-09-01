@@ -57,6 +57,7 @@ export const eventUpdateInputSchema = eventFieldsSchema.partial().extend({ id: z
 export const taskInputSchema = z.object({
   title: z.string().min(1).max(140),
   type: taskTypeSchema,
+  icon: z.string().max(8).optional().nullable(),
   assigneeId: z.string().optional().nullable(),
   frequency: z.string().optional().nullable(),
   dueAt: z.coerce.date().optional().nullable(),
