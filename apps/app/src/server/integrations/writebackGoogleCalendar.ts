@@ -34,10 +34,13 @@ async function withFreshToken<T>(
 
 /**
  * Mirrors an in-app-created/updated event to every connected+writable Google
- * account belonging to one of its assignees. Each push is tracked via
- * EventSourceLink (the same table inbound sync uses for dedup) so a re-push
- * updates the existing Google event in place, and so a later inbound sync
- * recognizes it as already-linked instead of importing it as a new Event.
+ * account belonging to one of its assignees, plus any account the event is
+ * already linked to (so reassigning e.g. to a child, who has no Google
+ * account, still keeps a previously-pushed copy up to date instead of
+ * orphaning it). Each push is tracked via EventSourceLink (the same table
+ * inbound sync uses for dedup) so a re-push updates the existing Google event
+ * in place, and so a later inbound sync recognizes it as already-linked
+ * instead of importing it as a new Event.
  *
  * Best-effort: failures here shouldn't block the in-app save, since the local
  * DB is authoritative and the Google copy is a mirror. Callers should catch.
@@ -45,15 +48,27 @@ async function withFreshToken<T>(
 export async function pushEventToGoogle(prisma: PrismaClient, eventId: string): Promise<void> {
   const event = await prisma.event.findUniqueOrThrow({
     where: { id: eventId },
-    include: { assignees: true, sourceLinks: true },
+    include: { assignees: true, sourceLinks: { include: { calendarAccount: true } } },
   });
 
   const assigneeIds = event.assignees.map((a) => a.userId);
-  if (assigneeIds.length === 0) return;
 
-  const accounts = await prisma.calendarAccount.findMany({
-    where: { householdId: event.householdId, ownerId: { in: assigneeIds }, provider: "GOOGLE", status: "connected" },
-  });
+  const assigneeAccounts = assigneeIds.length
+    ? await prisma.calendarAccount.findMany({
+        where: { householdId: event.householdId, ownerId: { in: assigneeIds }, provider: "GOOGLE", status: "connected" },
+      })
+    : [];
+
+  // An event can be reassigned to someone without a connected Google account
+  // (e.g. a child, who never goes through the Google OAuth flow). Keep
+  // already-mirrored copies in sync in that case rather than orphaning them —
+  // union in accounts that already have a link for this event, even if their
+  // owner is no longer an assignee.
+  const linkedAccounts = event.sourceLinks
+    .map((link) => link.calendarAccount)
+    .filter((account) => account.provider === "GOOGLE" && account.status === "connected");
+
+  const accounts = [...new Map([...assigneeAccounts, ...linkedAccounts].map((a) => [a.id, a])).values()];
   if (accounts.length === 0) return;
 
   const input: GoogleCalendarEventInput = {
