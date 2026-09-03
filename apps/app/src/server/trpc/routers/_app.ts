@@ -9,6 +9,7 @@ import { recipeRouter } from "./recipe";
 import { mealPlanRouter } from "./mealPlan";
 import { rewardRouter } from "./reward";
 import { rewardRedemptionRouter } from "./rewardRedemption";
+import { digestRouter } from "./digest";
 
 export const appRouter = router({
   household: householdRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   mealPlan: mealPlanRouter,
   reward: rewardRouter,
   rewardRedemption: rewardRedemptionRouter,
+  digest: digestRouter,
 });
 
 export type AppRouter = typeof appRouter;

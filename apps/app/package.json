@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@household/ai": "workspace:*",
     "@household/db": "workspace:*",
     "@household/domain": "workspace:*",
     "@household/ui": "workspace:*",

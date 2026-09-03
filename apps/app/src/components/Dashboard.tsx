@@ -40,6 +40,36 @@ function describeNextEvent(event: EventView, now: Date): { eyebrow: string; big:
   return { eyebrow: "Up next", big: format(event.startAt, "EEE"), small: format(event.startAt, "MMM d, h:mm a") };
 }
 
+function MorningDigest() {
+  // Digest text is LLM-generated and slow/costly to regenerate, so this
+  // rarely refetches — the server also caches it for the day (see
+  // routers/digest.ts). retry: false so a local Ollama that isn't running
+  // doesn't retry-storm; the banner just quietly doesn't render.
+  const digestQuery = trpc.digest.morning.useQuery(undefined, {
+    staleTime: 15 * 60 * 1000,
+    retry: false,
+  });
+
+  if (digestQuery.isPending) {
+    return (
+      <div className="animate-pulse rounded-2xl border border-gold-200 bg-gold-50 p-4">
+        <div className="h-3 w-32 rounded bg-gold-200" />
+        <div className="mt-3 h-3 w-full rounded bg-gold-200" />
+        <div className="mt-2 h-3 w-2/3 rounded bg-gold-200" />
+      </div>
+    );
+  }
+
+  if (!digestQuery.data) return null;
+
+  return (
+    <div className="rounded-2xl border border-gold-200 bg-gold-50 p-4">
+      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gold-700">✨ Morning Briefing</p>
+      <p className="text-sm leading-relaxed text-ink-700">{digestQuery.data.text}</p>
+    </div>
+  );
+}
+
 export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "kiosk" }) {
   // A kiosk display sits unattended for hours/days without a reload or
   // window-focus event, so React Query's default (refetch on mount/focus
@@ -112,6 +142,8 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
           <h1 className="font-display text-2xl italic text-sapphire-800">{format(now, "EEEE, MMMM d")}</h1>
           {meQuery.data && <p className="text-sm text-ink-500">Hi {meQuery.data.name.split(" ")[0]}</p>}
         </header>
+
+        <MorningDigest />
 
         {heroEvent && heroInfo && (
           <div className="flex flex-wrap items-center justify-between gap-6 rounded-2xl bg-gradient-to-br from-sapphire-700 to-sapphire-900 p-6 text-white shadow-sm">
@@ -285,6 +317,8 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
         </h1>
         {meQuery.data && <p className="text-sm text-ink-500">Hi {meQuery.data.name.split(" ")[0]}</p>}
       </header>
+
+      <MorningDigest />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-400">Today</h2>
