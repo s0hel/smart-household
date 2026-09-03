@@ -12,7 +12,7 @@
     "@ai-sdk/anthropic": "^2.0.0",
     "@ai-sdk/openai": "^2.0.0",
     "@ai-sdk/openai-compatible": "^1.0.0",
-    "date-fns": "^4.1.0"
+    "@household/domain": "workspace:*"
   },
   "devDependencies": {
     "@household/config": "workspace:*",

@@ -111,12 +111,12 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^1.0.0
         version: 1.0.53(zod@3.25.76)
+      '@household/domain':
+        specifier: workspace:*
+        version: link:../domain
       ai:
         specifier: ^5.0.0
         version: 5.0.251(zod@3.25.76)
-      date-fns:
-        specifier: ^4.1.0
-        version: 4.4.0
     devDependencies:
       '@household/config':
         specifier: workspace:*

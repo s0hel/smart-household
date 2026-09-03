@@ -41,14 +41,23 @@ function describeNextEvent(event: EventView, now: Date): { eyebrow: string; big:
 }
 
 function MorningDigest() {
+  // The digest narrates "today" as this browser sees it, matching the
+  // client-side isToday()/startOfDay() the rest of the dashboard uses (a
+  // kiosk or phone can be in a different zone than the household's stored
+  // one) — Intl always resolves to a real IANA zone, no fallback needed.
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   // Digest text is LLM-generated and slow/costly to regenerate, so this
   // rarely refetches — the server also caches it for the day (see
   // routers/digest.ts). retry: false so a local Ollama that isn't running
   // doesn't retry-storm; the banner just quietly doesn't render.
-  const digestQuery = trpc.digest.morning.useQuery(undefined, {
-    staleTime: 15 * 60 * 1000,
-    retry: false,
-  });
+  const digestQuery = trpc.digest.morning.useQuery(
+    { timeZone },
+    {
+      staleTime: 15 * 60 * 1000,
+      retry: false,
+    },
+  );
 
   if (digestQuery.isPending) {
     return (

@@ -20,6 +20,27 @@ export function startOfDayInTimezone(date: Date, timeZone: string): Date {
   return new Date(shifted.getTime() - offsetMs);
 }
 
+/** "4:00 PM" as a wall clock in `timeZone` would read it — for display text
+ * (prompts, narration), never for anything that gets stored or compared. */
+export function formatTimeInTimezone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+/** "Wednesday, September 2" as the calendar date reads in `timeZone`. */
+export function formatDateInTimezone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
 function timezoneOffsetMs(epochMs: number, timeZone: string): number {
   const date = new Date(epochMs);
   const formatter = new Intl.DateTimeFormat("en-US", {

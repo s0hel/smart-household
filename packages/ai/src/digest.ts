@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { format } from "date-fns";
+import { formatDateInTimezone, formatTimeInTimezone } from "@household/domain";
 import { getModel } from "./model";
 
 export interface DigestEvent {
@@ -23,6 +23,10 @@ export interface DigestMeal {
 
 export interface MorningDigestInput {
   today: Date;
+  /** IANA zone the reader is actually viewing from (the browser's), used to
+   * render every date/time in the prompt — the server process's own local
+   * time is never the right zone to narrate someone else's morning in. */
+  timeZone: string;
   events: DigestEvent[];
   tasks: DigestTask[];
   meals: DigestMeal[];
@@ -34,8 +38,10 @@ export interface MorningDigestResult {
   model: string;
 }
 
-function formatEvent(event: DigestEvent): string {
-  const time = event.allDay ? "all day" : `${format(event.startAt, "h:mm a")}-${format(event.endAt, "h:mm a")}`;
+function formatEvent(event: DigestEvent, timeZone: string): string {
+  const time = event.allDay
+    ? "all day"
+    : `${formatTimeInTimezone(event.startAt, timeZone)}-${formatTimeInTimezone(event.endAt, timeZone)}`;
   const who = event.assigneeNames.length > 0 ? ` (${event.assigneeNames.join(", ")})` : "";
   const where = event.location ? ` at ${event.location}` : "";
   return `- ${event.title}${who}: ${time}${where}`;
@@ -45,7 +51,7 @@ function buildFacts(input: MorningDigestInput): string {
   const lines: string[] = [];
 
   lines.push(input.events.length > 0 ? "EVENTS TODAY:" : "EVENTS TODAY: none");
-  for (const event of input.events) lines.push(formatEvent(event));
+  for (const event of input.events) lines.push(formatEvent(event, input.timeZone));
 
   lines.push(input.tasks.length > 0 ? "OPEN TASKS/CHORES DUE TODAY:" : "OPEN TASKS/CHORES DUE TODAY: none");
   for (const task of input.tasks) {
@@ -79,7 +85,7 @@ export async function generateMorningDigest(input: MorningDigestInput): Promise<
   const { text } = await generateText({
     model,
     system: SYSTEM_PROMPT,
-    prompt: `Today is ${format(input.today, "EEEE, MMMM d")}.\n\n${facts}`,
+    prompt: `Today is ${formatDateInTimezone(input.today, input.timeZone)}.\n\n${facts}`,
     temperature: 0.4,
     maxOutputTokens: 200,
   });
