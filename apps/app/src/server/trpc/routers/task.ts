@@ -1,18 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { isTaskDueOn, taskInputSchema } from "@household/domain";
+import { isTaskDueOn, startOfDayInTimezone, taskInputSchema } from "@household/domain";
 import { router, capabilityProcedure } from "../trpc";
 import { logAudit } from "../../audit";
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 export const taskRouter = router({
   list: capabilityProcedure("task", "read").query(async ({ ctx }) => {
-    const today = startOfDay(new Date());
+    const today = startOfDayInTimezone(new Date(), ctx.timezone);
     const tasks = await ctx.prisma.task.findMany({
       where: { householdId: ctx.householdId, active: true },
       include: {
@@ -23,7 +17,7 @@ export const taskRouter = router({
     });
     return tasks.map((task) => ({
       ...task,
-      dueToday: isTaskDueOn(task.frequency, task.dueAt ?? task.createdAt, today),
+      dueToday: isTaskDueOn(task.frequency, task.dueAt ?? task.createdAt, today, ctx.timezone),
     }));
   }),
 
@@ -88,7 +82,7 @@ export const taskRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "You can only complete your own tasks" });
       }
 
-      const occurrenceDate = startOfDay(new Date());
+      const occurrenceDate = startOfDayInTimezone(new Date(), ctx.timezone);
       // Credit goes to the assignee, not whoever clicked the checkbox — a parent
       // marking their child's task done shouldn't earn the parent the points.
       const completedById = task.assigneeId ?? ctx.actor.id;

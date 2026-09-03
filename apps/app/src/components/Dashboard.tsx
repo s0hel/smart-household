@@ -41,16 +41,22 @@ function describeNextEvent(event: EventView, now: Date): { eyebrow: string; big:
 }
 
 export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "kiosk" }) {
+  // A kiosk display sits unattended for hours/days without a reload or
+  // window-focus event, so React Query's default (refetch on mount/focus
+  // only) never fires — polling is what actually rolls the screen over to
+  // the next day's due/completed state instead of freezing on yesterday's.
+  const kioskPollOptions = variant === "kiosk" ? { refetchInterval: 5 * 60 * 1000 } : undefined;
+
   // `household.me` resolves the *active profile* (post PIN-switch), not
   // necessarily the originally authenticated account — greeting the wrong
   // person on a shared kiosk/mobile session would defeat the point of
   // profile switching.
-  const meQuery = trpc.household.me.useQuery();
-  const eventsQuery = trpc.event.list.useQuery();
-  const tasksQuery = trpc.task.list.useQuery();
+  const meQuery = trpc.household.me.useQuery(undefined, kioskPollOptions);
+  const eventsQuery = trpc.event.list.useQuery(undefined, kioskPollOptions);
+  const tasksQuery = trpc.task.list.useQuery(undefined, kioskPollOptions);
   const { data: members } = trpc.familyMember.list.useQuery();
   const today = new Date();
-  const mealPlanQuery = trpc.mealPlan.list.useQuery({ from: startOfDay(today), to: endOfDay(today) });
+  const mealPlanQuery = trpc.mealPlan.list.useQuery({ from: startOfDay(today), to: endOfDay(today) }, kioskPollOptions);
   const utils = trpc.useUtils();
   const setCompletion = trpc.task.setCompletion.useMutation({
     onSuccess: () => utils.task.list.invalidate(),

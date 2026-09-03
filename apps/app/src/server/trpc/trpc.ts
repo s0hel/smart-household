@@ -12,7 +12,7 @@ export const publicProcedure = t.procedure;
 
 /** Any authenticated household member (any role). */
 export const householdProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.actor || !ctx.householdId) {
+  if (!ctx.actor || !ctx.householdId || !ctx.timezone) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
   return next({
@@ -20,6 +20,7 @@ export const householdProcedure = t.procedure.use(({ ctx, next }) => {
       ...ctx,
       actor: ctx.actor,
       householdId: ctx.householdId,
+      timezone: ctx.timezone,
     },
   });
 });

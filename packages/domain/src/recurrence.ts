@@ -1,4 +1,5 @@
 import { RRule } from "rrule";
+import { startOfDayInTimezone } from "./timezone";
 
 /**
  * Whether a recurring task is due on `date`, given its RRULE-ish `frequency`
@@ -8,8 +9,18 @@ import { RRule } from "rrule";
  *
  * Tasks with no frequency (one-time tasks) are always due until completed
  * or deleted, so this returns true for them.
+ *
+ * `date`'s calendar day is resolved in `timeZone` (the household's), not the
+ * server process's local timezone — otherwise a server not co-located with
+ * the household drifts the day boundary away from the household's actual
+ * midnight.
  */
-export function isTaskDueOn(frequency: string | null | undefined, anchor: Date, date: Date): boolean {
+export function isTaskDueOn(
+  frequency: string | null | undefined,
+  anchor: Date,
+  date: Date,
+  timeZone: string,
+): boolean {
   if (!frequency) return true;
 
   let rule: RRule;
@@ -20,10 +31,8 @@ export function isTaskDueOn(frequency: string | null | undefined, anchor: Date, 
     return true;
   }
 
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+  const dayStart = startOfDayInTimezone(date, timeZone);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   return rule.between(dayStart, dayEnd, true).length > 0;
 }
