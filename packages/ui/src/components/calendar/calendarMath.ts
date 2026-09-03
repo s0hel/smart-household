@@ -33,16 +33,34 @@ export function isSameCalendarDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+/**
+ * All-day events store startAt/endAt as UTC midnight representing a bare calendar
+ * date (see syncGoogleCalendar's `toDate`), with no meaningful time-of-day. Reading
+ * that instant with local Date getters shifts it by the viewer's UTC offset — a US
+ * Central browser would show a UTC-midnight "Sept 4" event as "Sept 3, 7pm". Anchoring
+ * to a local Date built from the UTC year/month/day instead gives a Date that every
+ * other local-time helper here (isToday, format, isSameCalendarDay, ...) reads as the
+ * correct calendar date, regardless of the viewer's timezone.
+ */
+export function allDayAnchor(date: Date): Date {
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+/** The calendar day an event should be considered to fall/start on, timezone-safe for all-day events. */
+export function eventDisplayDate(event: Pick<EventView, "startAt" | "allDay">): Date {
+  return event.allDay ? allDayAnchor(event.startAt) : event.startAt;
+}
+
 export function eventsOnDay(events: EventView[], day: Date): EventView[] {
   return events
-    .filter((e) => isSameCalendarDay(e.startAt, day))
+    .filter((e) => isSameCalendarDay(eventDisplayDate(e), day))
     .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
 }
 
 /** All-day events whose span covers `day`, regardless of which day they started on. */
 export function allDayEventsOnDay(events: EventView[], day: Date): EventView[] {
   const dayStart = startOfDay(day);
-  return events.filter((e) => e.allDay && dayStart >= startOfDay(e.startAt) && dayStart <= allDayLastDay(e));
+  return events.filter((e) => e.allDay && dayStart >= allDayAnchor(e.startAt) && dayStart <= allDayLastDay(e));
 }
 
 export interface LayoutPosition {
@@ -152,8 +170,8 @@ export const MAX_VISIBLE_ALLDAY_ROWS = 2;
  * so a one-day event has `endAt` equal to `startAt` plus one day.
  */
 export function allDayLastDay(event: EventView): Date {
-  const start = startOfDay(event.startAt);
-  const last = startOfDay(new Date(event.endAt.getTime() - 1));
+  const start = allDayAnchor(event.startAt);
+  const last = allDayAnchor(new Date(event.endAt.getTime() - 1));
   return last < start ? start : last;
 }
 
@@ -178,7 +196,7 @@ export function layoutAllDayBars(events: EventView[], rangeStart: Date, rangeDay
     .filter((e) => e.allDay)
     .map((event) => ({
       event,
-      startIdx: differenceInCalendarDays(startOfDay(event.startAt), rangeStart),
+      startIdx: differenceInCalendarDays(allDayAnchor(event.startAt), rangeStart),
       endIdx: differenceInCalendarDays(allDayLastDay(event), rangeStart),
     }))
     .filter((item) => item.endIdx >= 0 && item.startIdx < rangeDays)

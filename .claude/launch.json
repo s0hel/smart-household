@@ -2,16 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "household-dev",
+      "name": "dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 3000
-    },
-    {
-      "name": "household-dev-alt-port",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@household/app", "exec", "next", "dev", "-p", "3001"],
-      "port": 3001
     }
   ]
 }

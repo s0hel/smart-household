@@ -24,6 +24,18 @@ function thisWeek(daysFromMonday: number, hour: number, minute = 0): Date {
   return atWeek(0, daysFromMonday, hour, minute);
 }
 
+/**
+ * Same calendar day as `atWeek`, but as UTC midnight rather than local midnight —
+ * the correct timezone-independent representation for an all-day Event's
+ * startAt/endAt (see syncGoogleCalendar's `toDate`). Using local midnight here would
+ * shift the seeded all-day events by a day when read back on a machine in a
+ * different (especially positive) UTC offset.
+ */
+function atWeekAllDay(weekOffset: number, daysFromMonday: number): Date {
+  const local = atWeek(weekOffset, daysFromMonday, 0, 0);
+  return new Date(Date.UTC(local.getFullYear(), local.getMonth(), local.getDate()));
+}
+
 /** Midnight `daysAgo` days before today, for keying ChoreCompletion.occurrenceDate. */
 function daysAgo(n: number): Date {
   const d = new Date();
@@ -293,8 +305,8 @@ async function main() {
       data: {
         householdId: household.id,
         title: "Family Trip to Grandma's",
-        startAt: atWeek(2, 4, 0, 0), // next-next Friday
-        endAt: atWeek(2, 6, 0, 0), // through Sunday
+        startAt: atWeekAllDay(2, 4), // next-next Friday
+        endAt: atWeekAllDay(2, 6), // through Sunday
         allDay: true,
         location: "Rukhsana's House",
         colorHex: "#0E7C86",
@@ -308,8 +320,8 @@ async function main() {
       data: {
         householdId: household.id,
         title: "School Closed - Teacher In-Service Day",
-        startAt: atWeek(-1, 4, 0, 0),
-        endAt: atWeek(-1, 4, 0, 0),
+        startAt: atWeekAllDay(-1, 4),
+        endAt: atWeekAllDay(-1, 4),
         allDay: true,
         colorHex: "#9B2242",
         assignees: { create: [{ userId: imran.id }, { userId: zara.id }] },

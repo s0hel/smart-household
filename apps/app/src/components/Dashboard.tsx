@@ -2,7 +2,7 @@
 
 import { addDays, differenceInMinutes, endOfDay, format, isToday, isTomorrow, startOfDay } from "date-fns";
 import Link from "next/link";
-import { Card, cn, EventCard, PersonBadge, TaskCard, shadeColor, type EventView } from "@household/ui";
+import { Card, cn, EventCard, eventDisplayDate, PersonBadge, TaskCard, shadeColor, type EventView } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 import { toEventView, toTaskView } from "@/lib/viewModels";
 
@@ -23,10 +23,12 @@ function formatEventTimeRange(event: EventView) {
  * is still ahead, "Happening now" while inside it, and a day label once the
  * next thing on the calendar has rolled past tomorrow. */
 function describeNextEvent(event: EventView, now: Date): { eyebrow: string; big: string; small: string } {
-  if (event.startAt <= now && now < event.endAt) {
+  if (!event.allDay && event.startAt <= now && now < event.endAt) {
     return { eyebrow: "Happening now", big: "Now", small: "In progress" };
   }
-  if (isToday(event.startAt)) {
+  const day = eventDisplayDate(event);
+  if (isToday(day)) {
+    if (event.allDay) return { eyebrow: "Up next", big: "Today", small: "All day" };
     const minutes = Math.max(1, differenceInMinutes(event.startAt, now));
     if (minutes < 60) {
       return { eyebrow: "Up next", big: String(minutes), small: minutes === 1 ? "minute away" : "minutes away" };
@@ -34,10 +36,18 @@ function describeNextEvent(event: EventView, now: Date): { eyebrow: string; big:
     const hours = Math.round(minutes / 60);
     return { eyebrow: "Up next", big: String(hours), small: hours === 1 ? "hour away" : "hours away" };
   }
-  if (isTomorrow(event.startAt)) {
-    return { eyebrow: "Up next, tomorrow", big: "Tomorrow", small: format(event.startAt, "h:mm a") };
+  if (isTomorrow(day)) {
+    return {
+      eyebrow: "Up next, tomorrow",
+      big: "Tomorrow",
+      small: event.allDay ? "All day" : format(event.startAt, "h:mm a"),
+    };
   }
-  return { eyebrow: "Up next", big: format(event.startAt, "EEE"), small: format(event.startAt, "MMM d, h:mm a") };
+  return {
+    eyebrow: "Up next",
+    big: format(day, "EEE"),
+    small: event.allDay ? format(day, "MMM d") : format(event.startAt, "MMM d, h:mm a"),
+  };
 }
 
 function MorningDigest() {
@@ -105,8 +115,8 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
   const tasks = (tasksQuery.data ?? []).map(toTaskView).filter((task) => task.dueToday);
   const meals = mealPlanQuery.data ?? [];
 
-  const todayEvents = events.filter((e) => isToday(e.startAt));
-  const tomorrowEvents = events.filter((e) => isTomorrow(e.startAt));
+  const todayEvents = events.filter((e) => isToday(eventDisplayDate(e)));
+  const tomorrowEvents = events.filter((e) => isTomorrow(eventDisplayDate(e)));
 
   const tasksByAssignee = new Map<string, typeof tasks>();
   const unassignedTasks: typeof tasks = [];
@@ -135,14 +145,15 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
     const weekAheadEnd = endOfDay(addDays(startOfDay(today), 6));
     const weekAheadByDay = new Map<string, typeof events>();
     for (const event of events) {
-      if (event.startAt < weekAheadStart || event.startAt > weekAheadEnd) continue;
-      const key = format(event.startAt, "yyyy-MM-dd");
+      const day = eventDisplayDate(event);
+      if (day < weekAheadStart || day > weekAheadEnd) continue;
+      const key = format(day, "yyyy-MM-dd");
       const list = weekAheadByDay.get(key) ?? [];
       list.push(event);
       weekAheadByDay.set(key, list);
     }
     const weekAheadDays = Array.from(weekAheadByDay.values())
-      .map((dayEvents) => ({ date: dayEvents[0]!.startAt, events: dayEvents }))
+      .map((dayEvents) => ({ date: eventDisplayDate(dayEvents[0]!), events: dayEvents }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     return (

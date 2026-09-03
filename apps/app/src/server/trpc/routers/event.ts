@@ -20,6 +20,20 @@ const EVENT_INCLUDE = {
   checklist: { orderBy: { order: "asc" as const } },
 };
 
+// All-day events represent a bare calendar date with no time component, so
+// startAt/endAt must always be a timezone-independent UTC-midnight instant
+// (see syncGoogleCalendar's toDate) — otherwise the same date renders as a
+// different day depending on which timezone reads it back.
+function normalizeAllDay<T extends { allDay?: boolean; startAt?: Date; endAt?: Date }>(input: T): T {
+  if (!input.allDay) return input;
+  const toUtcMidnight = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  return {
+    ...input,
+    startAt: input.startAt ? toUtcMidnight(input.startAt) : input.startAt,
+    endAt: input.endAt ? toUtcMidnight(input.endAt) : input.endAt,
+  };
+}
+
 export const eventRouter = router({
   list: capabilityProcedure("event", "read")
     .input(
@@ -47,7 +61,7 @@ export const eventRouter = router({
       const { assigneeIds, checklist, ...rest } = input;
       const event = await ctx.prisma.event.create({
         data: {
-          ...rest,
+          ...normalizeAllDay(rest),
           householdId: ctx.householdId,
           assignees: { create: assigneeIds.map((userId) => ({ userId })) },
           checklist: { create: checklist.map((item, order) => ({ ...item, order })) },
@@ -82,7 +96,7 @@ export const eventRouter = router({
             data: checklist.map((item, order) => ({ ...item, eventId: id, order })),
           });
         }
-        return tx.event.update({ where: { id }, data: rest, include: EVENT_INCLUDE });
+        return tx.event.update({ where: { id }, data: normalizeAllDay(rest), include: EVENT_INCLUDE });
       });
 
       await logAudit(ctx.prisma, {

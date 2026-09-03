@@ -2,6 +2,7 @@ import * as React from "react";
 import { format, isSameDay } from "date-fns";
 import type { EventView } from "../../types";
 import { EventCard } from "../EventCard";
+import { eventDisplayDate } from "./calendarMath";
 
 export function AgendaView({
   events,
@@ -13,11 +14,12 @@ export function AgendaView({
   const sorted = [...events].sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
   const groups: { day: Date; events: EventView[] }[] = [];
   for (const event of sorted) {
+    const day = eventDisplayDate(event);
     const lastGroup = groups[groups.length - 1];
-    if (lastGroup && isSameDay(lastGroup.day, event.startAt)) {
+    if (lastGroup && isSameDay(lastGroup.day, day)) {
       lastGroup.events.push(event);
     } else {
-      groups.push({ day: event.startAt, events: [event] });
+      groups.push({ day, events: [event] });
     }
   }
 
