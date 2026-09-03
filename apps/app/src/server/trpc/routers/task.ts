@@ -89,6 +89,9 @@ export const taskRouter = router({
       }
 
       const occurrenceDate = startOfDay(new Date());
+      // Credit goes to the assignee, not whoever clicked the checkbox — a parent
+      // marking their child's task done shouldn't earn the parent the points.
+      const completedById = task.assigneeId ?? ctx.actor.id;
 
       if (input.completed) {
         await ctx.prisma.choreCompletion.upsert({
@@ -96,7 +99,7 @@ export const taskRouter = router({
           create: {
             taskId: task.id,
             occurrenceDate,
-            completedById: ctx.actor.id,
+            completedById,
             pointsAwarded: task.points,
           },
           update: {},
