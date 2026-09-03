@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Button, Input, Label } from "@household/ui";
+import { allDayAnchor, Button, Input, Label } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 
 interface EventFormValues {
@@ -9,6 +9,7 @@ interface EventFormValues {
   title: string;
   startAt: string;
   endAt: string;
+  allDay: boolean;
   location: string;
   assigneeIds: string[];
   colorHex: string;
@@ -30,6 +31,7 @@ export function EventFormDialog({
     title: string;
     startAt: Date;
     endAt: Date;
+    allDay: boolean;
     location?: string | null;
     colorHex: string;
     assignees: { userId: string }[];
@@ -42,14 +44,23 @@ export function EventFormDialog({
   const updateEvent = trpc.event.update.useMutation({ onSuccess: () => utils.event.list.invalidate() });
   const deleteEvent = trpc.event.delete.useMutation({ onSuccess: () => utils.event.list.invalidate() });
 
+  const initialAllDay = editing?.allDay ?? false;
   const start = editing?.startAt ?? new Date(initialDate.setHours(9, 0, 0, 0));
   const end = editing?.endAt ?? new Date(start.getTime() + 60 * 60 * 1000);
+  // An all-day event's startAt/endAt is a UTC-midnight instant representing a bare
+  // calendar date (see event.ts's normalizeAllDay), not a real moment in time.
+  // Reading it with local Date getters (as toLocalInputValue does) shifts it by the
+  // viewer's UTC offset — allDayAnchor rebuilds a local Date with the same Y/M/D so
+  // the datetime-local field shows the correct calendar date instead.
+  const displayStart = initialAllDay ? allDayAnchor(start) : start;
+  const displayEnd = initialAllDay ? allDayAnchor(end) : end;
 
   const [values, setValues] = React.useState<EventFormValues>({
     id: editing?.id,
     title: editing?.title ?? "",
-    startAt: toLocalInputValue(start),
-    endAt: toLocalInputValue(end),
+    startAt: toLocalInputValue(displayStart),
+    endAt: toLocalInputValue(displayEnd),
+    allDay: initialAllDay,
     location: editing?.location ?? "",
     assigneeIds: editing?.assignees.map((a) => a.userId) ?? [],
     colorHex: editing?.colorHex ?? "#2851A3",
@@ -57,11 +68,16 @@ export function EventFormDialog({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // For all-day events, build the UTC-midnight instant directly from the
+    // date portion (never through a local Date parse) so the saved value
+    // can't pick up the browser's timezone offset — same pattern as
+    // syncGoogleCalendar's toDate.
+    const toEventDate = (v: string) => (values.allDay ? new Date(`${v.slice(0, 10)}T00:00:00Z`) : new Date(v));
     const payload = {
       title: values.title,
-      startAt: new Date(values.startAt),
-      endAt: new Date(values.endAt),
-      allDay: false,
+      startAt: toEventDate(values.startAt),
+      endAt: toEventDate(values.endAt),
+      allDay: values.allDay,
       location: values.location || null,
       colorHex: values.colorHex,
       assigneeIds: values.assigneeIds,
@@ -102,14 +118,32 @@ export function EventFormDialog({
               onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))}
             />
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="allDay"
+              type="checkbox"
+              checked={values.allDay}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setValues((v) => ({
+                  ...v,
+                  allDay: checked,
+                  startAt: checked ? v.startAt.slice(0, 10) : v.startAt.length > 10 ? v.startAt : `${v.startAt}T09:00`,
+                  endAt: checked ? v.endAt.slice(0, 10) : v.endAt.length > 10 ? v.endAt : `${v.endAt}T09:00`,
+                }));
+              }}
+              className="h-4 w-4 rounded border-ink-300"
+            />
+            <Label htmlFor="allDay">All day</Label>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="startAt">Starts</Label>
               <Input
                 id="startAt"
-                type="datetime-local"
+                type={values.allDay ? "date" : "datetime-local"}
                 required
-                value={values.startAt}
+                value={values.allDay ? values.startAt.slice(0, 10) : values.startAt}
                 onChange={(e) => setValues((v) => ({ ...v, startAt: e.target.value }))}
               />
             </div>
@@ -117,9 +151,9 @@ export function EventFormDialog({
               <Label htmlFor="endAt">Ends</Label>
               <Input
                 id="endAt"
-                type="datetime-local"
+                type={values.allDay ? "date" : "datetime-local"}
                 required
-                value={values.endAt}
+                value={values.allDay ? values.endAt.slice(0, 10) : values.endAt}
                 onChange={(e) => setValues((v) => ({ ...v, endAt: e.target.value }))}
               />
             </div>

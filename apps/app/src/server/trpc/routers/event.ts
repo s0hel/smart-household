@@ -26,7 +26,7 @@ const EVENT_INCLUDE = {
 // different day depending on which timezone reads it back.
 function normalizeAllDay<T extends { allDay?: boolean; startAt?: Date; endAt?: Date }>(input: T): T {
   if (!input.allDay) return input;
-  const toUtcMidnight = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const toUtcMidnight = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   return {
     ...input,
     startAt: input.startAt ? toUtcMidnight(input.startAt) : input.startAt,
