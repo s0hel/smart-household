@@ -17,7 +17,7 @@ function canonicalHash(key: string): string {
 function toDate(part: { date?: string; dateTime?: string } | undefined): { date: Date; allDay: boolean } | null {
   if (!part) return null;
   if (part.dateTime) return { date: new Date(part.dateTime), allDay: false };
-  if (part.date) return { date: new Date(`${part.date}T00:00:00`), allDay: true };
+  if (part.date) return { date: new Date(`${part.date}T00:00:00Z`), allDay: true };
   return null;
 }
 
