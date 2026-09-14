@@ -18,6 +18,29 @@
         "DATABASE_URL"
       ]
     },
+    "@household/app#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**"
+      ],
+      "env": [
+        "DATABASE_URL",
+        "AUTH_SECRET",
+        "AUTH_URL",
+        "AUTH_TRUST_HOST",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "CALENDAR_TOKEN_ENCRYPTION_KEY",
+        "AI_PROVIDER",
+        "AI_MODEL",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "OLLAMA_BASE_URL"
+      ]
+    },
     "dev": {
       "cache": false,
       "persistent": true
