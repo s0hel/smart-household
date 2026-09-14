@@ -47,6 +47,8 @@ TypeScript monorepo: pnpm workspaces + Turborepo, Next.js 15 App Router, tRPC v1
 
 Route protection is centralized in `apps/app/src/proxy.ts` (redirects unauthenticated requests hitting any protected prefix to `/sign-in`), not per-page. This is Next.js 16's `proxy` convention (renamed from `middleware`); it always runs on the Node.js runtime, not Edge.
 
+The prefix list itself lives in `apps/app/src/routeProtection.ts`, separate from `proxy.ts` so it can be tested without loading Auth.js and the Prisma client. **Adding a page under `(web)` means adding its prefix there** — `routeProtection.test.ts` enumerates the real route directories and fails until you do. Matching is exact-or-path-boundary, not a bare `startsWith`: the loose version meant the `/m` entry also matched `/meal-plan` (protected by accident rather than intent) and `/mystery` (a route that doesn't exist, redirected to sign-in instead of 404ing).
+
 ### Auth and the "active profile" concept
 
 Auth.js issues a JWT session for the adult who logs in with email/password (`apps/app/src/server/auth.ts`). Children don't get their own login — instead, a PIN-based **profile switch** on an already-authenticated device updates `session.activeProfileId` without a full re-auth (`trigger === "update"` in the `jwt` callback). This means `session.user.id` (who logged in) and `session.user.activeProfileId` (who is currently acting) can differ.
