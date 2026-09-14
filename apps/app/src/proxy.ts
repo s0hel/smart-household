@@ -1,20 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/server/auth";
-
-const PROTECTED_PREFIXES = [
-  "/dashboard",
-  "/calendar",
-  "/tasks",
-  "/lists",
-  "/family",
-  "/word-of-the-day",
-  "/m",
-  "/display",
-];
+import { isProtectedPath } from "./routeProtection";
 
 export default auth((req) => {
-  const isProtected = PROTECTED_PREFIXES.some((prefix) => req.nextUrl.pathname.startsWith(prefix));
-  if (isProtected && !req.auth) {
+  if (isProtectedPath(req.nextUrl.pathname) && !req.auth) {
     return NextResponse.redirect(new URL("/sign-in", req.nextUrl.origin));
   }
 });
