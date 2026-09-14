@@ -159,18 +159,28 @@ export function WordOfTheDay({ compact = false, className }: { compact?: boolean
   }
 
   if (!card) {
-    // Word generation needs a reachable model provider. Say so plainly rather
-    // than rendering an empty card — unlike the morning digest (which quietly
-    // hides itself), this is the whole point of the section being looked at.
+    // Something upstream failed — the model provider, the database, anything.
+    // Deliberately does NOT name a cause: this card once told families their
+    // "AI provider" was misconfigured when the real problem was an unmigrated
+    // database, which sent the person reading it off in the wrong direction.
+    // It also doesn't print the error: the server masks internal messages
+    // (server/trpc/trpc.ts) and logs the real one, so there is nothing here
+    // worth showing and plenty worth leaking.
     return (
       <div className={className}>
         <div className="rounded-2xl border border-ink-200 bg-surface p-5">
           <p className="text-xs font-bold uppercase tracking-wide text-ink-400">📖 Word of the day</p>
           <p className="mt-2 text-sm text-ink-500">
-            Couldn&apos;t reach the word generator right now. Check that your AI provider is configured and
-            running, then refresh.
+            Today&apos;s word isn&apos;t ready yet. Try again in a moment.
           </p>
-          {todayQuery.error && <p className="mt-1 text-xs text-ink-400">{todayQuery.error.message}</p>}
+          <button
+            type="button"
+            onClick={() => void todayQuery.refetch()}
+            disabled={todayQuery.isFetching}
+            className="mt-3 text-xs font-medium text-sapphire-600 hover:underline disabled:opacity-60"
+          >
+            {todayQuery.isFetching ? "Trying…" : "Try again"}
+          </button>
         </div>
       </div>
     );

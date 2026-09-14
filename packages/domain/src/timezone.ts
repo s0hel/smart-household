@@ -67,3 +67,18 @@ function timezoneOffsetMs(epochMs: number, timeZone: string): number {
   );
   return asUTC - epochMs;
 }
+
+/**
+ * The local midnight `days` calendar days after `dayStart`, in `timeZone`.
+ *
+ * Not `dayStart + days * 86_400_000`: across a DST boundary that lands an
+ * hour either side of midnight, and an hour early snaps back to the *previous*
+ * calendar day — a review scheduled for "6 days from now" would quietly come
+ * due on day 5. Stepping to midday of the target day first puts the instant
+ * safely inside it whichever way the clocks moved, and re-resolving midnight
+ * from there gives the real local start of that day.
+ */
+export function addDaysInTimezone(dayStart: Date, days: number, timeZone: string): Date {
+  const midday = new Date(dayStart.getTime() + days * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000);
+  return startOfDayInTimezone(midday, timeZone);
+}

@@ -6,6 +6,7 @@ import { Card, cn } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { ConnectedVocabCard, WordOfTheDay, type VocabCard } from "@/components/WordOfTheDay";
+import { VocabReview } from "@/components/VocabReview";
 
 const LEVELS: VocabLevel[] = ["JUNIOR", "ISEE"];
 
@@ -142,14 +143,20 @@ export function VocabPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile value={String(stats?.wordsRead ?? 0)} label="Words read" />
-        <StatTile value={String(stats?.quizzesPassed ?? 0)} label="Quizzes passed" />
-        <StatTile value={String(stats?.pointsToday ?? 0)} label="Points today" tone="gold" />
+        <StatTile value={String(stats?.quizzesPassed ?? 0)} label="Words learned" />
+        <StatTile value={String(stats?.wordsInRotation ?? 0)} label="In rotation" />
+        <StatTile value={String(stats?.wordsMastered ?? 0)} label="Mastered" />
         <StatTile
-          value={String(stats?.pointsRemainingToday ?? 0)}
-          label={`Left of ${stats?.dailyCap ?? 0}`}
+          value={String(stats?.pointsToday ?? 0)}
+          label={`Points today of ${stats?.dailyCap ?? 0}`}
+          tone="gold"
         />
       </div>
+
+      {/* Review before new material: clearing what's already half-learned is
+          worth more than adding to the pile, and it's the habit every spaced
+          repetition tool builds its session around. */}
+      <VocabReview />
 
       <WordOfTheDay />
 

@@ -32,6 +32,14 @@ export const VOCAB_QUIZ_POINTS_FIRST_TRY = 5;
 export const VOCAB_QUIZ_POINTS_RETRY = 2;
 
 /**
+ * Passing a scheduled review. Lower than first learning the word (the recall
+ * is easier and the card is familiar), but deliberately not tiny: review is
+ * the half of this feature that actually makes vocabulary stick, so it has to
+ * be worth a kid's time to clear the queue.
+ */
+export const VOCAB_REVIEW_POINTS = 3;
+
+/**
  * Ceiling on points a single person can bank from vocabulary in one day.
  * Bonus words are generated on demand and are effectively unlimited, so
  * without a cap a kid could out-earn every chore in the house by tapping

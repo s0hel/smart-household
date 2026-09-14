@@ -13,6 +13,7 @@ export * from "./components/EventCard";
 export * from "./components/TaskCard";
 export * from "./components/ListCard";
 export * from "./components/WordOfTheDayCard";
+export * from "./components/VocabReviewCard";
 export * from "./components/calendar/CalendarView";
 export * from "./components/calendar/DayView";
 export * from "./components/calendar/WeekView";

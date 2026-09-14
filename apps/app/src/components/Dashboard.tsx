@@ -6,6 +6,7 @@ import { Card, cn, EventCard, eventDisplayDate, PersonBadge, TaskCard, shadeColo
 import { trpc } from "@/lib/trpc";
 import { toEventView, toTaskView } from "@/lib/viewModels";
 import { WordOfTheDay } from "@/components/WordOfTheDay";
+import { VocabReview } from "@/components/VocabReview";
 
 const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
 const MEAL_LABELS: Record<(typeof MEAL_TYPES)[number], string> = {
@@ -335,6 +336,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
               Word bank →
             </Link>
           </div>
+          <VocabReview hideWhenEmpty className="mb-3" />
           <WordOfTheDay compact />
         </section>
       </div>
@@ -415,6 +417,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
             </Link>
           )}
         </div>
+        <VocabReview hideWhenEmpty className="mb-3" />
         <WordOfTheDay />
       </section>
 

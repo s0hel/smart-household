@@ -493,13 +493,47 @@ model VocabReview {
   quizAttempts  Int       @default(0)
   quizCorrectAt DateTime?
 
-  // Running total for this card (read credit plus whatever the quiz earned).
-  // Denormalised onto the row because the daily cap and the points balance
-  // both need to sum it, and neither should have to re-derive the award rules.
+  // Lifetime total for this card (read credit, the first quiz, and every
+  // review since). This is what the points balance sums.
   pointsAwarded Int @default(0)
+
+  // Today's share of that total, bucketed by the day it was earned.
+  //
+  // The daily cap cannot be derived from `pointsAwarded` + `readAt`: a card
+  // is always *read* on an earlier day than it is *reviewed* (the shortest
+  // interval is one day), so summing by `readAt` attributes review points to
+  // the day the word was first seen and lets review earnings bypass the cap
+  // completely. `dailyPointsOn` is stored as local midnight in the
+  // household's timezone, and the bucket resets the first time a card earns
+  // on a new day.
+  dailyPoints   Int       @default(0)
+  dailyPointsOn DateTime?
+
+  // --- Spaced repetition (SM-2) -------------------------------------------
+  // A word passes its first quiz and then enters a review schedule, so it
+  // comes back days and weeks later instead of being "learned" once and never
+  // seen again. State lives per (word, person) because two kids who learned
+  // the same word on the same day forget it at different rates.
+  //
+  // nextReviewAt is null until the word is first solved — an unsolved card is
+  // not "overdue", it simply hasn't entered the schedule yet. It is always
+  // stored at local midnight of the household's timezone so "due today" means
+  // the same thing here as it does for chores.
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  nextReviewAt   DateTime?
+  lastReviewedAt DateTime?
+  reviewsPassed  Int       @default(0)
+  lapses         Int       @default(0)
 
   @@unique([wordId, userId])
   @@index([userId])
+  // Drives the "what's due for this kid right now" lookup on every dashboard
+  // load, which is the single hottest read this feature adds.
+  @@index([userId, nextReviewAt])
+  // Serves the daily-cap sum, which runs before every single award.
+  @@index([userId, dailyPointsOn])
 }
 
 // ---------------------------------------------------------------------------
