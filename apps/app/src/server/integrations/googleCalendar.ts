@@ -114,19 +114,25 @@ export interface ListEventsResult {
  * when `syncToken` is given — as an incremental sync returning only what has
  * changed since that token was issued.
  *
- * `timeMin` and `syncToken` are mutually exclusive by Google's rules: the
- * events.list reference forbids sending timeMin/timeMax (also q, orderBy,
+ * `timeMin`/`timeMax` and `syncToken` are mutually exclusive by Google's rules:
+ * the events.list reference forbids sending either (also q, orderBy,
  * updatedMin, …) alongside a syncToken, because the token already carries the
- * restrictions of the request that produced it. That is also why the full sync
- * deliberately sets no `timeMax` — an upper bound would be frozen into every
- * later incremental sync, and events scheduled past it would never arrive as
- * the window slid forward.
+ * restrictions of the request that produced it. Callers therefore have to
+ * re-baseline the window periodically — see `needsFullSync` in
+ * syncGoogleCalendar.ts.
+ *
+ * `maxPages` is a backstop, not tuning. With `singleEvents=true` an unbounded
+ * request expands never-ending recurring events into instances indefinitely,
+ * and the resulting page walk will happily run until the serverless function
+ * is killed — which reads as a hang, with nothing in the log to explain it.
  */
 export async function fetchPrimaryCalendarEvents(
   accessToken: string,
-  options: { timeMin?: Date; syncToken?: string },
+  options: { timeMin?: Date; timeMax?: Date; syncToken?: string; maxPages?: number },
 ): Promise<ListEventsResult> {
   const events: GoogleCalendarEvent[] = [];
+  const maxPages = options.maxPages ?? 40;
+  let pages = 0;
   let pageToken: string | undefined;
   let nextSyncToken: string | null = null;
 
@@ -134,8 +140,9 @@ export async function fetchPrimaryCalendarEvents(
     const params = new URLSearchParams({ singleEvents: "true", maxResults: "250" });
     if (options.syncToken) {
       params.set("syncToken", options.syncToken);
-    } else if (options.timeMin) {
-      params.set("timeMin", options.timeMin.toISOString());
+    } else {
+      if (options.timeMin) params.set("timeMin", options.timeMin.toISOString());
+      if (options.timeMax) params.set("timeMax", options.timeMax.toISOString());
     }
     if (pageToken) params.set("pageToken", pageToken);
 
@@ -154,6 +161,12 @@ export async function fetchPrimaryCalendarEvents(
     pageToken = body.nextPageToken;
     // Only the final page carries a sync token.
     nextSyncToken = body.nextSyncToken ?? null;
+
+    if (++pages >= maxPages && pageToken) {
+      throw new Error(
+        `Google Calendar list exceeded ${maxPages} pages (${events.length} events) — refusing to keep paginating`,
+      );
+    }
   } while (pageToken);
 
   return { events, nextSyncToken };

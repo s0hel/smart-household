@@ -2,6 +2,16 @@
 
 This is the handoff doc for picking this project back up in a fresh Claude session. Read this first, then [README.md](README.md) (setup) and [technical-design.md](technical-design.md) (full architecture) as needed.
 
+**Status as of 2026-09-14 (session 11, follow-up):** **Fixed an unbounded full sync shipped an hour earlier.** The first real "Sync now" after deploying push sync never returned — no completion, no error, nothing in the Vercel log at all, because a request that doesn't finish isn't logged.
+
+Cause was in the session-11 change itself. Dropping `timeMax` from the full sync was correct about the constraint it was solving (Google freezes the originating request's time bounds into the sync token and forbids sending either alongside one, so a `timeMax` would be inherited by every later incremental sync and hide events past it) and wrong about the cost. With `singleEvents=true` and no upper bound, Google expands recurring events into individual instances with nothing to stop at, so one never-ending weekly event paginates until the serverless function is killed. Google's events.list reference documents no bound on that expansion.
+
+The fix keeps the window bounded (-30d/+180d, as before push sync) and solves the frozen horizon separately: `CalendarAccount.syncWindowEnd` records the `timeMax` baked into the current token, and `needsFullSync()` discards the token and re-baselines against a fresh window once that horizon is within 60 days — so a full re-sync happens roughly every 120 days per account and the window slides forward. Reconciliation is now scoped to *both* ends of the window (a full sync no longer sees past `timeMax`, so without the upper bound it would have deleted every event beyond it). `fetchPrimaryCalendarEvents` also gained a 40-page backstop that throws, so a future bounding mistake fails loudly instead of hanging.
+
+Also: the "Sync now" button had no error UI — the mutation handled only `onSuccess`, so a failure silently re-enabled the button and looked identical to a no-op. It now shows a pending state and the failure message.
+
+**The original hang was never directly observed in the logs** — the `calendarAccount.sync` request never appeared at all, as success, failure, or timeout, across 5+ minutes of watching. The diagnosis is from the code and Google's documented behaviour, not from a captured stack trace. Confirmation is the next "Sync now": if it returns promptly, the diagnosis held.
+
 **Status as of 2026-09-13 (session 11, uncommitted):** **Google Calendar push sync.** Calendar changes made in Google now flow into the app on their own, instead of waiting for someone to press "Sync now". Three pieces:
 
 1. **Push channels.** Connecting a calendar (and `calendarAccount.sync`, and the daily cron) opens a Google `events/watch` channel pointed at `POST /api/calendar/google/notifications`. Google pings that endpoint — headers only, no body — whenever anything on the calendar changes, and the handler runs an incremental sync for the account the channel belongs to. New `CalendarAccount` columns: `channelId` (unique, what the webhook looks the account up by), `channelResourceId`, `channelToken`, `channelExpiresAt`.

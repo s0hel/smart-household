@@ -151,6 +151,12 @@ model CalendarAccount {
   accessToken    String?
   refreshToken   String?
   syncCursor     String?
+  // The `timeMax` baked into the sync token `syncCursor` holds. Google freezes
+  // the originating request's time bounds into the token, so the token stops
+  // reporting events past this instant no matter how much later it is used —
+  // once now() approaches it, the token has to be discarded and re-baselined
+  // against a fresh window. See syncGoogleCalendar.ts.
+  syncWindowEnd  DateTime?
   lastSyncedAt   DateTime?
   status         String           @default("disconnected")
 

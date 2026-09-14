@@ -34,6 +34,9 @@ export function FamilyPage() {
   const syncCalendar = trpc.calendarAccount.sync.useMutation({
     onSuccess: () => utils.calendarAccount.list.invalidate(),
   });
+  // Without this the button just silently re-enables on failure, which is
+  // indistinguishable from it having done nothing at all.
+  const syncError = syncCalendar.error?.message ?? null;
   const calendarAccounts = calendarAccountsQuery.data ?? [];
 
   const [name, setName] = React.useState("");
@@ -190,6 +193,9 @@ export function FamilyPage() {
             {calendarAccounts.length === 0 && (
               <p className="text-sm text-ink-400">No calendars connected yet.</p>
             )}
+            {syncError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Sync failed: {syncError}</p>
+            )}
             {calendarAccounts.map((account) => (
               <div
                 key={account.id}
@@ -222,7 +228,7 @@ export function FamilyPage() {
                     disabled={syncCalendar.isPending}
                     className="text-xs text-sapphire-600 hover:underline disabled:opacity-50"
                   >
-                    Sync now
+                    {syncCalendar.isPending ? "Syncing…" : "Sync now"}
                   </button>
                   <button
                     onClick={() => disconnectCalendar.mutate({ id: account.id })}
