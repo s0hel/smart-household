@@ -22,12 +22,12 @@ pnpm dev                  # http://localhost:3000
 
 - `pnpm dev` / `pnpm build` — turbo across all packages, loads root `.env` via `dotenv-cli`
 - `pnpm lint` / `pnpm typecheck` — turbo across all packages (only `apps/app` currently has a real lint script; `packages/*` just run `tsc --noEmit`)
-- `pnpm test` — Vitest via turbo. Only `packages/domain` has tests today (the SM-2 scheduler and the timezone day math). The `test` turbo task deliberately has **no** `dependsOn: ["^build"]`, so unit tests run without a database.
+- `pnpm test` — Vitest via turbo, in `packages/domain` (SM-2 scheduler, timezone day math, the RBAC capability table) and `apps/app` (the ownership checks and capability gate, driven through real tRPC callers with a faked Prisma). The `test` turbo task deliberately has **no** `dependsOn: ["^build"]`, so the whole suite runs without a database.
 - `pnpm db:deploy` — `prisma migrate deploy` (applies pending migrations, never generates or resets). **`apps/app`'s `build` runs this before `next build`**, because the Vercel project's Root Directory is `apps/app` — a script in `packages/db` would never execute on deploy. Previously nothing migrated production at all, so a deploy shipped a client for a schema the database had never received and 500'd on a missing table. Note the script is `migrate:deploy`, not `deploy`: `pnpm deploy` is a built-in pnpm command and shadows a package script of that name.
 - `pnpm db:migrate` — `prisma migrate dev` in `packages/db` (edit `packages/db/prisma/schema.prisma`, then run this to generate a migration)
 - `pnpm db:seed` — reruns `packages/db/prisma/seed.ts`
 - `pnpm db:studio` — Prisma Studio
-- Vitest runs in `packages/domain` only; `pnpm test` works from the root. There is still no integration or browser-level testing, so don't assume coverage outside `packages/domain`.
+- Vitest runs in `packages/domain` and `apps/app`; `pnpm test` works from the root. Coverage is authorization and pure domain logic only — there is no integration, database, or browser-level testing, so don't assume a passing suite exercises a router end to end.
 - Demo login: `sohel@example.com` / `password123`. Seeded children switch profiles via PIN (Imran `1234`, Zara `5678`).
 
 **Local-dev gotchas** (see TODO.md for full detail): Next.js only auto-loads `.env` from `apps/app/`, not the repo root — there must be a symlink `apps/app/.env -> ../../.env`. On macOS with Postgres.app, use `127.0.0.1` not `localhost` in `DATABASE_URL` (IPv6 resolution can hang behind a permission dialog).
@@ -59,6 +59,12 @@ Every tRPC request re-resolves the **actor** fresh from the DB using `activeProf
 2. **Ownership check** — some actions (e.g. `task.complete`, `rewardRedemption.create`) pass the capability gate for a role but still require the handler to verify the actor owns/is the target of the specific record (see `setCompletion` in `apps/app/src/server/trpc/routers/task.ts` checking `task.assigneeId !== ctx.actor.id` for `CHILD`). `requiresOwnershipCheck()` in `rbac.ts` documents which resource/action pairs need this — it's not automatically enforced, routers must call it out explicitly.
 
 When adding a new resource or action, update the `CAPABILITIES` table in `rbac.ts` first, then wire the router with `capabilityProcedure`, then add an ownership check in the handler if the action is in `OWNERSHIP_SCOPED`.
+
+Both layers are tested, and the tests are written to push back on accidental widening:
+
+- `packages/domain/src/rbac.test.ts` asserts security *invariants* rather than restating the grid — GUEST and READONLY can mutate nothing anywhere, CHILD can never approve or delete, ADMIN is a superset of PARENT, and an unrecognised role string (the `ctx.actor.role as Role` cast means one can reach `can()` at runtime) denies rather than throws. It also pins CHILD's write surface to an exact list, so granting a child a new write is a deliberate edit to that list.
+- One test enforces coherence between the two layers: every pair in `OWNERSHIP_SCOPED` must be reachable by CHILD under the capability table, otherwise the ownership check in the router is unreachable dead code and the table and the guard have drifted apart.
+- `apps/app/src/server/trpc/routers/authorization.test.ts` exercises the real middleware and real handlers through `createCaller` with a faked Prisma — the routers import `@household/db` for types only, so no client is constructed and no database is needed. It covers the ownership rules, that a refusal writes nothing, that the capability gate rejects before the handler touches Prisma, and that household scoping is applied on the re-fetch.
 
 Household scoping (multi-tenancy) is enforced entirely at the tRPC middleware/handler layer — every query filters by `ctx.householdId`, and every mutation on an existing record re-fetches with `findFirstOrThrow({ where: { id, householdId: ctx.householdId } })` before acting, so a request can't touch another household's data by ID guessing. There is no Postgres RLS (flagged as Phase 2+ hardening).
 
