@@ -154,6 +154,15 @@ model CalendarAccount {
   lastSyncedAt   DateTime?
   status         String           @default("disconnected")
 
+  // Google push-notification channel (see server/integrations/calendarWatch.ts).
+  // channelId is what the webhook looks the account up by; channelToken is a
+  // per-channel secret Google echoes back in X-Goog-Channel-Token, so an
+  // unauthenticated POST can be attributed to this account and no other.
+  channelId         String?   @unique
+  channelResourceId String?
+  channelToken      String?
+  channelExpiresAt  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

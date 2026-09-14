@@ -1,6 +1,8 @@
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+const GOOGLE_CALENDAR_WATCH_URL = `${GOOGLE_CALENDAR_EVENTS_URL}/watch`;
+const GOOGLE_CHANNELS_STOP_URL = "https://www.googleapis.com/calendar/v3/channels/stop";
 
 // Read + write on the Events resource only (not full calendar settings) —
 // needed for two-way write-back (see writebackGoogleCalendar.ts). Accounts
@@ -90,34 +92,128 @@ export interface GoogleCalendarEventInput {
   end: { date?: string; dateTime?: string };
 }
 
+/**
+ * Thrown when Google rejects a stored `syncToken` (HTTP 410). The token has
+ * aged out and the caller must discard local sync state and do a full sync.
+ */
+export class SyncTokenExpiredError extends Error {
+  constructor() {
+    super("Google Calendar sync token expired");
+    this.name = "SyncTokenExpiredError";
+  }
+}
+
+export interface ListEventsResult {
+  events: GoogleCalendarEvent[];
+  /** Feed this back as `syncToken` on the next call to get only what changed. */
+  nextSyncToken: string | null;
+}
+
+/**
+ * Lists the primary calendar, either as a full sync from `timeMin` onward or —
+ * when `syncToken` is given — as an incremental sync returning only what has
+ * changed since that token was issued.
+ *
+ * `timeMin` and `syncToken` are mutually exclusive by Google's rules: the
+ * events.list reference forbids sending timeMin/timeMax (also q, orderBy,
+ * updatedMin, …) alongside a syncToken, because the token already carries the
+ * restrictions of the request that produced it. That is also why the full sync
+ * deliberately sets no `timeMax` — an upper bound would be frozen into every
+ * later incremental sync, and events scheduled past it would never arrive as
+ * the window slid forward.
+ */
 export async function fetchPrimaryCalendarEvents(
   accessToken: string,
-  timeMin: Date,
-  timeMax: Date,
-): Promise<GoogleCalendarEvent[]> {
+  options: { timeMin?: Date; syncToken?: string },
+): Promise<ListEventsResult> {
   const events: GoogleCalendarEvent[] = [];
   let pageToken: string | undefined;
+  let nextSyncToken: string | null = null;
 
   do {
-    const params = new URLSearchParams({
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: "true",
-      maxResults: "250",
-    });
+    const params = new URLSearchParams({ singleEvents: "true", maxResults: "250" });
+    if (options.syncToken) {
+      params.set("syncToken", options.syncToken);
+    } else if (options.timeMin) {
+      params.set("timeMin", options.timeMin.toISOString());
+    }
     if (pageToken) params.set("pageToken", pageToken);
 
     const res = await fetch(`${GOOGLE_CALENDAR_EVENTS_URL}?${params.toString()}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (res.status === 410) throw new SyncTokenExpiredError();
     if (!res.ok) throw new Error(`Google Calendar list failed: ${res.status} ${await res.text()}`);
 
-    const body = (await res.json()) as { items?: GoogleCalendarEvent[]; nextPageToken?: string };
+    const body = (await res.json()) as {
+      items?: GoogleCalendarEvent[];
+      nextPageToken?: string;
+      nextSyncToken?: string;
+    };
     events.push(...(body.items ?? []));
     pageToken = body.nextPageToken;
+    // Only the final page carries a sync token.
+    nextSyncToken = body.nextSyncToken ?? null;
   } while (pageToken);
 
-  return events;
+  return { events, nextSyncToken };
+}
+
+export interface WatchChannelResult {
+  resourceId: string;
+  /** Unix ms. Google caps the lifetime regardless of the TTL we ask for. */
+  expiration: Date;
+}
+
+/**
+ * Opens a push-notification channel on the primary calendar. Google then POSTs
+ * a bodiless ping to `address` whenever anything on that calendar changes.
+ *
+ * `token` is echoed back in the `X-Goog-Channel-Token` header — it is the only
+ * thing that authenticates the notification, since the endpoint itself has to
+ * be publicly reachable for Google to call it.
+ */
+export async function watchPrimaryCalendar(
+  accessToken: string,
+  params: { channelId: string; address: string; token: string; ttlSeconds: number },
+): Promise<WatchChannelResult> {
+  const res = await fetch(GOOGLE_CALENDAR_WATCH_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: params.channelId,
+      type: "web_hook",
+      address: params.address,
+      token: params.token,
+      params: { ttl: String(params.ttlSeconds) },
+    }),
+  });
+  if (!res.ok) throw new Error(`Google Calendar watch failed: ${res.status} ${await res.text()}`);
+
+  const body = (await res.json()) as { resourceId?: string; expiration?: string };
+  if (!body.resourceId) throw new Error("Google Calendar watch returned no resourceId");
+  return {
+    resourceId: body.resourceId,
+    expiration: body.expiration
+      ? new Date(Number(body.expiration))
+      : new Date(Date.now() + params.ttlSeconds * 1000),
+  };
+}
+
+/** Closes a push channel. 404/410 means Google already dropped it. */
+export async function stopWatchChannel(
+  accessToken: string,
+  channelId: string,
+  resourceId: string,
+): Promise<void> {
+  const res = await fetch(GOOGLE_CHANNELS_STOP_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ id: channelId, resourceId }),
+  });
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    throw new Error(`Google Calendar channel stop failed: ${res.status} ${await res.text()}`);
+  }
 }
 
 export async function createGoogleCalendarEvent(

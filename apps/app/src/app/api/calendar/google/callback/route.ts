@@ -5,6 +5,7 @@ import { auth } from "@/server/auth";
 import { encryptToken } from "@/server/integrations/tokenCrypto";
 import { exchangeCodeForTokens } from "@/server/integrations/googleCalendar";
 import { syncGoogleCalendarAccount } from "@/server/integrations/syncGoogleCalendar";
+import { ensureWatchChannel } from "@/server/integrations/calendarWatch";
 import { logAudit } from "@/server/audit";
 
 const STATE_COOKIE = "google_calendar_oauth_state";
@@ -92,6 +93,16 @@ export async function GET(request: NextRequest) {
   } catch {
     // Initial sync failing shouldn't block the connect flow itself — the
     // account is saved and a manual "Sync now" is available in the UI.
+  }
+
+  try {
+    // Opens the push channel that makes later changes arrive on their own.
+    // Returns "unavailable" rather than throwing when there's no public HTTPS
+    // URL to receive them (local dev), in which case the daily cron and the
+    // manual "Sync now" button are the sync path.
+    await ensureWatchChannel(prisma, account.id);
+  } catch (error) {
+    console.error(`Failed to open Google Calendar push channel for account ${account.id}`, error);
   }
 
   return redirectTo("connected");

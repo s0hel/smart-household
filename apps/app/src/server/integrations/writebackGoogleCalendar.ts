@@ -1,35 +1,14 @@
 import type { PrismaClient } from "@household/db";
-import { decryptToken, encryptToken } from "./tokenCrypto";
+import { withGoogleAccessToken } from "./googleAccessToken";
 import {
   createGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
-  refreshAccessToken,
   updateGoogleCalendarEvent,
   type GoogleCalendarEventInput,
 } from "./googleCalendar";
 
 function toGooglePart(date: Date, allDay: boolean): { date?: string; dateTime?: string } {
   return allDay ? { date: date.toISOString().slice(0, 10) } : { dateTime: date.toISOString() };
-}
-
-async function withFreshToken<T>(
-  prisma: PrismaClient,
-  account: { id: string; accessToken: string | null; refreshToken: string | null },
-  fn: (accessToken: string) => Promise<T>,
-): Promise<T> {
-  if (!account.accessToken || !account.refreshToken) {
-    throw new Error("Calendar account has no stored tokens");
-  }
-  try {
-    return await fn(decryptToken(account.accessToken));
-  } catch {
-    const refreshed = await refreshAccessToken(decryptToken(account.refreshToken));
-    await prisma.calendarAccount.update({
-      where: { id: account.id },
-      data: { accessToken: encryptToken(refreshed.access_token) },
-    });
-    return fn(refreshed.access_token);
-  }
 }
 
 /**
@@ -81,7 +60,7 @@ export async function pushEventToGoogle(prisma: PrismaClient, eventId: string): 
 
   for (const account of accounts) {
     const link = event.sourceLinks.find((l) => l.calendarAccountId === account.id);
-    await withFreshToken(prisma, account, async (accessToken) => {
+    await withGoogleAccessToken(prisma, account, async (accessToken) => {
       if (link) {
         await updateGoogleCalendarEvent(accessToken, link.sourceEventId, input);
       } else {
@@ -103,7 +82,7 @@ export async function retractEventFromGoogle(prisma: PrismaClient, eventId: stri
 
   for (const link of links) {
     if (link.calendarAccount.provider !== "GOOGLE" || link.calendarAccount.status !== "connected") continue;
-    await withFreshToken(prisma, link.calendarAccount, (accessToken) =>
+    await withGoogleAccessToken(prisma, link.calendarAccount, (accessToken) =>
       deleteGoogleCalendarEvent(accessToken, link.sourceEventId),
     );
   }
