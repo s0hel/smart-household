@@ -173,10 +173,20 @@ export const vocabQuizAnswerInputSchema = z.object({
   choiceIndex: z.number().int().min(0).max(3),
 });
 
+/** A scheduled-review answer names the word the reader picked, not an index —
+ * the review question is "which of these words means this?", so the answer is
+ * a word id and the server never has to ship a position for the client to
+ * match against. */
+export const vocabReviewAnswerInputSchema = z.object({
+  reviewId: z.string(),
+  chosenWordId: z.string(),
+});
+
 export type FamilyMemberInput = z.infer<typeof familyMemberInputSchema>;
 export type VocabWordContent = z.infer<typeof vocabWordContentSchema>;
 export type VocabWordWire = z.infer<typeof vocabWordWireSchema>;
 export type VocabQuizAnswerInput = z.infer<typeof vocabQuizAnswerInputSchema>;
+export type VocabReviewAnswerInput = z.infer<typeof vocabReviewAnswerInputSchema>;
 export type EventInput = z.infer<typeof eventInputSchema>;
 export type TaskInput = z.infer<typeof taskInputSchema>;
 export type ListInput = z.infer<typeof listInputSchema>;

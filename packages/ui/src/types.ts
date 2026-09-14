@@ -87,3 +87,25 @@ export interface VocabQuizFeedback {
   /** True when the answer was right but the daily points cap had been hit. */
   atDailyCap: boolean;
 }
+
+/** One scheduled-review question. Deliberately carries no hint of which
+ * choice is right — the answer is graded server-side against `reviewId`. */
+export interface VocabReviewQuestionView {
+  reviewId: string;
+  level: "JUNIOR" | "ISEE";
+  /** The definition written for a 10-year-old. */
+  prompt: string;
+  /** The same meaning written for a 6-year-old. */
+  simplePrompt: string;
+  choices: { id: string; word: string }[];
+}
+
+export interface VocabReviewFeedback {
+  correct: boolean;
+  correctWordId: string;
+  correctWord: string;
+  pointsAwarded: number;
+  /** Days until this word comes back around. */
+  intervalDays: number;
+  atDailyCap: boolean;
+}
