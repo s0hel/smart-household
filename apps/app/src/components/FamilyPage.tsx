@@ -207,6 +207,14 @@ export function FamilyPage() {
                         minute: "2-digit",
                       })}`}
                   </p>
+                  {/* A live push channel is the difference between "shows up
+                      within seconds" and "shows up after the daily catch-up
+                      run", so it's worth saying which one is in effect. */}
+                  <p className="text-xs text-ink-400">
+                    {account.channelExpiresAt && new Date(account.channelExpiresAt) > new Date()
+                      ? "Updating automatically when Google changes"
+                      : "Automatic updates off — syncing on a daily schedule"}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button

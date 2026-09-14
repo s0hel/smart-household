@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Read [TODO.md](TODO.md) first** — it's the standing handoff doc: current status, known local-dev gotchas, milestone checklist, and tech debt. Keep it up to date as you land work (update "Status as of" date, check off milestone items, add new gotchas/tech debt you discover). [README.md](README.md) has setup instructions; [technical-design.md](technical-design.md) has the full architecture spec (§ numbers referenced below); [business-requirements.md](business-requirements.md) is the PRD.
 
-Milestone 1 (core household, calendar, tasks/chores, lists) is done; Milestone 2's Google Calendar OAuth sync (with cross-calendar dedup and two-way write-back) and Phase 2's meal planning + rewards redemption are also built — see TODO.md's checklists for exact status. A **Word of the Day** vocabulary feature (two difficulty bands, LLM-generated cards, points for reading + passing a quiz) is also built — see "Word of the Day" below. Explicitly NOT built yet: Microsoft/Apple calendar sync, realtime multi-device push, kiosk device pairing/device-token auth, PWA offline support, AI Sidekick, and **no automated tests exist yet**.
+Milestone 1 (core household, calendar, tasks/chores, lists) is done; Milestone 2's Google Calendar sync (OAuth connect, cross-calendar dedup, two-way write-back, and push-notification-driven incremental sync — see "Google Calendar sync" below) and Phase 2's meal planning + rewards redemption are also built — see TODO.md's checklists for exact status. A **Word of the Day** vocabulary feature (two difficulty bands, LLM-generated cards, points for reading + passing a quiz) is also built — see "Word of the Day" below. Explicitly NOT built yet: Microsoft/Apple calendar sync, realtime multi-device push, kiosk device pairing/device-token auth, PWA offline support, AI Sidekick, and **no automated tests exist yet**.
 
 ## Commands
 
@@ -24,6 +24,7 @@ pnpm dev                  # http://localhost:3000
 - `pnpm lint` / `pnpm typecheck` — turbo across all packages (only `apps/app` currently has a real lint script; `packages/*` just run `tsc --noEmit`)
 - `pnpm test` — Vitest via turbo, in `packages/domain` (SM-2 scheduler, timezone day math, the RBAC capability table) and `apps/app` (the ownership checks and capability gate, driven through real tRPC callers with a faked Prisma). The `test` turbo task deliberately has **no** `dependsOn: ["^build"]`, so the whole suite runs without a database.
 - `pnpm db:deploy` — `prisma migrate deploy` (applies pending migrations, never generates or resets). **`apps/app`'s `build` runs this before `next build`**, because the Vercel project's Root Directory is `apps/app` — a script in `packages/db` would never execute on deploy. Previously nothing migrated production at all, so a deploy shipped a client for a schema the database had never received and 500'd on a missing table. Note the script is `migrate:deploy`, not `deploy`: `pnpm deploy` is a built-in pnpm command and shadows a package script of that name.
+- Vitest also runs route handlers now — `apps/app/vitest.config.mts` aliases `@/*` the way `tsconfig.json` does, since handlers import through it.
 - `pnpm db:migrate` — `prisma migrate dev` in `packages/db` (edit `packages/db/prisma/schema.prisma`, then run this to generate a migration)
 - `pnpm db:seed` — reruns `packages/db/prisma/seed.ts`
 - `pnpm db:studio` — Prisma Studio
@@ -113,6 +114,22 @@ Two traps this design already fell into, both fixed, both easy to reintroduce:
 - **The daily points cap cannot be summed from `pointsAwarded` filtered by `readAt`.** A card is always read on an earlier day than it is reviewed (minimum interval: one day), so that sum attributes review points to the day the word was first seen and lets review earnings bypass the cap entirely. Today's earnings come from the per-row `dailyPoints`/`dailyPointsOn` bucket instead; every award goes through `awardPoints()` in the router.
 
 The generation prompt carries hard-won specifics (per-level calibration anchors, a random starting-letter constraint to break mode collapse, an explicit "simpleDefinition must be measurably simpler" check, a self-referential-synonym ban). The model still gets these wrong sometimes, so the ban and the answer-position shuffle are **also enforced in code** after parse — see `generateVocabWord` and `generateAndStore`. `vocabWordWireSchema` (tolerant) is what the model generates against; `vocabWordContentSchema` (strict) is what gets stored.
+
+### Google Calendar sync
+
+Three ways a Google change reaches the app, in descending order of speed:
+
+1. **Push notifications.** A `events/watch` channel per `CalendarAccount` points at `POST /api/calendar/google/notifications` (`calendarWatch.ts` opens and renews them). Google's ping carries no body — just `X-Goog-*` headers — so the handler's job is to identify the account and run an incremental sync.
+2. **The daily cron**, `GET /api/cron/calendar-sync`, which renews channels and catch-up-syncs every account.
+3. **"Sync now"** on `/family` (`calendarAccount.sync`), which also (re)opens a missing channel — it's the repair path for an account connected before push existed.
+
+Things to know before changing any of it:
+
+- **Both endpoints are unauthenticated by necessity.** Google and Vercel Cron call them, not a signed-in browser, and `proxy.ts` excludes `/api` from its session gate. The webhook is authorized by the per-channel `channelToken` Google echoes back in `X-Goog-Channel-Token`; the cron by `Authorization: Bearer $CRON_SECRET`. Both compare in constant time after a length check, and the cron **refuses everything when `CRON_SECRET` is unset** rather than reading "unset" as "unguarded". `channelToken` must never reach a client — `calendarAccount.list` selects columns explicitly and deliberately omits it.
+- **A full sync must not send `timeMax`.** Google freezes the originating request's `timeMin`/`timeMax` into the `nextSyncToken`, and `events.list` forbids sending either alongside a `syncToken`. A `timeMax` would therefore be inherited by every later incremental sync, permanently hiding events scheduled past it as the window slid forward. A backward `timeMin` is fine — it stays put, which is all it needs to do.
+- **Push requires a stable public HTTPS URL**, pinned in `GOOGLE_CALENDAR_WEBHOOK_URL` (falling back to `AUTH_URL`, then Vercel's production URL). A channel outlives the deployment that opened it, so a per-deploy preview URL would stop resolving mid-life. `resolveWebhookUrl()` returns null for http, localhost, and `.local`, and the whole feature then degrades to cron + manual sync instead of registering a channel Google can never deliver to — which would look exactly like "nobody changed anything" for a week.
+- **Concurrency is settled by unique indexes, not by coordination.** Overlapping notifications can both create the same event or the same source link; `@@unique([calendarAccountId, sourceEventId])` picks the winner and the loser catches `P2002`, the same pattern the vocab feature uses.
+- One access-token refresh helper serves all three call sites (`googleAccessToken.ts`) — sync, write-back, and channel registration all hit the same hourly expiry.
 
 ### Theming
 

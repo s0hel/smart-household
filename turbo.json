@@ -34,6 +34,8 @@
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "CALENDAR_TOKEN_ENCRYPTION_KEY",
+        "GOOGLE_CALENDAR_WEBHOOK_URL",
+        "CRON_SECRET",
         "AI_PROVIDER",
         "AI_MODEL",
         "ANTHROPIC_API_KEY",
