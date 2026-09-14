@@ -22,11 +22,12 @@ pnpm dev                  # http://localhost:3000
 
 - `pnpm dev` / `pnpm build` — turbo across all packages, loads root `.env` via `dotenv-cli`
 - `pnpm lint` / `pnpm typecheck` — turbo across all packages (only `apps/app` currently has a real lint script; `packages/*` just run `tsc --noEmit`)
-- `pnpm db:deploy` — `prisma migrate deploy` (applies pending migrations, never generates or resets). `packages/db`'s `build` runs this before `prisma generate`, so a Vercel deploy migrates its own database — previously the build only generated a client for a schema production had never received, which shipped an app that compiled and then 500'd on a missing table.
+- `pnpm test` — Vitest via turbo. Only `packages/domain` has tests today (the SM-2 scheduler and the timezone day math). The `test` turbo task deliberately has **no** `dependsOn: ["^build"]`, so unit tests run without a database.
+- `pnpm db:deploy` — `prisma migrate deploy` (applies pending migrations, never generates or resets). **`apps/app`'s `build` runs this before `next build`**, because the Vercel project's Root Directory is `apps/app` — a script in `packages/db` would never execute on deploy. Previously nothing migrated production at all, so a deploy shipped a client for a schema the database had never received and 500'd on a missing table. Note the script is `migrate:deploy`, not `deploy`: `pnpm deploy` is a built-in pnpm command and shadows a package script of that name.
 - `pnpm db:migrate` — `prisma migrate dev` in `packages/db` (edit `packages/db/prisma/schema.prisma`, then run this to generate a migration)
 - `pnpm db:seed` — reruns `packages/db/prisma/seed.ts`
 - `pnpm db:studio` — Prisma Studio
-- No test runner is configured anywhere in the repo (no Vitest/Jest/Playwright) — don't assume `pnpm test` exists.
+- Vitest runs in `packages/domain` only; `pnpm test` works from the root. There is still no integration or browser-level testing, so don't assume coverage outside `packages/domain`.
 - Demo login: `sohel@example.com` / `password123`. Seeded children switch profiles via PIN (Imran `1234`, Zara `5678`).
 
 **Local-dev gotchas** (see TODO.md for full detail): Next.js only auto-loads `.env` from `apps/app/`, not the repo root — there must be a symlink `apps/app/.env -> ../../.env`. On macOS with Postgres.app, use `127.0.0.1` not `localhost` in `DATABASE_URL` (IPv6 resolution can hang behind a permission dialog).
@@ -96,7 +97,7 @@ Three invariants worth knowing before touching this:
 
 Two traps this design already fell into, both fixed, both easy to reintroduce:
 
-- **`nextReviewAt` must be built with `addDaysInTimezone`, never `+ days * 86_400_000`.** Across a DST boundary the raw arithmetic lands an hour either side of local midnight, and an hour early snaps back to the previous calendar day.
+- **`nextReviewAt` must be built with `addDaysInTimezone`, never `+ days * 86_400_000`.** Across a DST boundary the raw arithmetic lands an hour either side of local midnight, and an hour early snaps back to the previous calendar day. Both this and `startOfDayInTimezone` are covered by `packages/domain/src/timezone.test.ts`, which walks a full year in four zones — run `pnpm test` before touching either.
 - **The daily points cap cannot be summed from `pointsAwarded` filtered by `readAt`.** A card is always read on an earlier day than it is reviewed (minimum interval: one day), so that sum attributes review points to the day the word was first seen and lets review earnings bypass the cap entirely. Today's earnings come from the per-row `dailyPoints`/`dailyPointsOn` bucket instead; every award goes through `awardPoints()` in the router.
 
 The generation prompt carries hard-won specifics (per-level calibration anchors, a random starting-letter constraint to break mode collapse, an explicit "simpleDefinition must be measurably simpler" check, a self-referential-synonym ban). The model still gets these wrong sometimes, so the ban and the answer-position shuffle are **also enforced in code** after parse — see `generateVocabWord` and `generateAndStore`. `vocabWordWireSchema` (tolerant) is what the model generates against; `vocabWordContentSchema` (strict) is what gets stored.
