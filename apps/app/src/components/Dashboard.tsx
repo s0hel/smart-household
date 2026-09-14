@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, cn, EventCard, eventDisplayDate, PersonBadge, TaskCard, shadeColor, type EventView } from "@household/ui";
 import { trpc } from "@/lib/trpc";
 import { toEventView, toTaskView } from "@/lib/viewModels";
+import { WordOfTheDay } from "@/components/WordOfTheDay";
 
 const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
 const MEAL_LABELS: Record<(typeof MEAL_TYPES)[number], string> = {
@@ -135,6 +136,7 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
 
   const isKiosk = variant === "kiosk";
   const mealPlanHref = variant === "mobile" ? "/m/meal-plan" : "/meal-plan";
+  const vocabHref = variant === "mobile" ? "/m/word-of-the-day" : "/word-of-the-day";
 
   if (variant === "web") {
     const now = new Date();
@@ -325,6 +327,16 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
             )}
           </Card>
         </div>
+
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">Learn</h2>
+            <Link href={vocabHref} className="text-xs font-medium text-sapphire-600 hover:underline">
+              Word bank →
+            </Link>
+          </div>
+          <WordOfTheDay compact />
+        </section>
       </div>
     );
   }
@@ -392,6 +404,18 @@ export function Dashboard({ variant = "web" }: { variant?: "web" | "mobile" | "k
             </div>
           )}
         </div>
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">Learn</h2>
+          {!isKiosk && (
+            <Link href={vocabHref} className="text-xs font-medium text-sapphire-600 hover:underline">
+              Word bank →
+            </Link>
+          )}
+        </div>
+        <WordOfTheDay />
       </section>
 
       <section>

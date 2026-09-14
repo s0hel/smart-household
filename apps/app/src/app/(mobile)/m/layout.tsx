@@ -11,6 +11,7 @@ const NAV = [
   { href: "/m/tasks", label: "Tasks", icon: "✅" },
   { href: "/m/lists", label: "Lists", icon: "🛒" },
   { href: "/m/meal-plan", label: "Meals", icon: "🍽️" },
+  { href: "/m/word-of-the-day", label: "Word", icon: "📖" },
   { href: "/m/rewards", label: "Rewards", icon: "🎁" },
   { href: "/m/family", label: "Family", icon: "👪" },
 ];

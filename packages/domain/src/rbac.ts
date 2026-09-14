@@ -12,7 +12,8 @@ export type Resource =
   | "list"
   | "listItem"
   | "recipe"
-  | "mealPlanEntry";
+  | "mealPlanEntry"
+  | "vocabWord";
 
 export type Action = "create" | "read" | "update" | "delete" | "complete" | "approve";
 
@@ -36,6 +37,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     listItem: ["create", "read", "update", "delete"],
     recipe: ["create", "read", "update", "delete"],
     mealPlanEntry: ["create", "read", "update", "delete"],
+    vocabWord: ["create", "read", "update", "delete", "complete"],
   },
   PARENT: {
     household: ["read"],
@@ -50,6 +52,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     listItem: ["create", "read", "update", "delete"],
     recipe: ["create", "read", "update", "delete"],
     mealPlanEntry: ["create", "read", "update", "delete"],
+    vocabWord: ["create", "read", "update", "delete", "complete"],
   },
   CHILD: {
     household: ["read"],
@@ -62,6 +65,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     listItem: ["read", "update"],
     recipe: ["read"],
     mealPlanEntry: ["read"],
+    vocabWord: ["create", "read", "complete"],
   },
   GUEST: {
     household: ["read"],
@@ -74,6 +78,7 @@ const CAPABILITIES: Record<Role, Partial<Record<Resource, Action[]>>> = {
     list: ["read"],
     recipe: ["read"],
     mealPlanEntry: ["read"],
+    vocabWord: ["read"],
   },
 };
 

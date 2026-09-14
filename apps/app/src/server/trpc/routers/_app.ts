@@ -10,6 +10,7 @@ import { mealPlanRouter } from "./mealPlan";
 import { rewardRouter } from "./reward";
 import { rewardRedemptionRouter } from "./rewardRedemption";
 import { digestRouter } from "./digest";
+import { vocabRouter } from "./vocab";
 
 export const appRouter = router({
   household: householdRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   reward: rewardRouter,
   rewardRedemption: rewardRedemptionRouter,
   digest: digestRouter,
+  vocab: vocabRouter,
 });
 
 export type AppRouter = typeof appRouter;

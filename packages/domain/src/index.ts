@@ -3,3 +3,4 @@ export * from "./rbac";
 export * from "./recurrence";
 export * from "./schemas";
 export * from "./timezone";
+export * from "./vocab";

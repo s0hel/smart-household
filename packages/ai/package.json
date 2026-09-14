@@ -12,7 +12,8 @@
     "@ai-sdk/anthropic": "^2.0.0",
     "@ai-sdk/openai": "^2.0.0",
     "@ai-sdk/openai-compatible": "^1.0.0",
-    "@household/domain": "workspace:*"
+    "@household/domain": "workspace:*",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@household/config": "workspace:*",

@@ -14,6 +14,7 @@ import {
   MealPlanIcon,
   RewardsIcon,
   TasksIcon,
+  WordIcon,
 } from "./NavIcons";
 
 const NAV = [
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/tasks", label: "Tasks & Chores", Icon: TasksIcon },
   { href: "/lists", label: "Lists", Icon: ListIcon },
   { href: "/meal-plan", label: "Meal Plan", Icon: MealPlanIcon },
+  { href: "/word-of-the-day", label: "Word of the Day", Icon: WordIcon },
   { href: "/rewards", label: "Rewards", Icon: RewardsIcon },
   { href: "/family", label: "Family", Icon: FamilyIcon },
 ];

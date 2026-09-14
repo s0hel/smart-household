@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/server/auth";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/calendar", "/tasks", "/lists", "/family", "/m", "/display"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/calendar",
+  "/tasks",
+  "/lists",
+  "/family",
+  "/word-of-the-day",
+  "/m",
+  "/display",
+];
 
 export default auth((req) => {
   const isProtected = PROTECTED_PREFIXES.some((prefix) => req.nextUrl.pathname.startsWith(prefix));

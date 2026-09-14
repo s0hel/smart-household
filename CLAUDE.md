@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Read [TODO.md](TODO.md) first** — it's the standing handoff doc: current status, known local-dev gotchas, milestone checklist, and tech debt. Keep it up to date as you land work (update "Status as of" date, check off milestone items, add new gotchas/tech debt you discover). [README.md](README.md) has setup instructions; [technical-design.md](technical-design.md) has the full architecture spec (§ numbers referenced below); [business-requirements.md](business-requirements.md) is the PRD.
 
-Milestone 1 (core household, calendar, tasks/chores, lists) is done; Milestone 2's Google Calendar OAuth sync (with cross-calendar dedup and two-way write-back) and Phase 2's meal planning + rewards redemption are also built — see TODO.md's checklists for exact status. Explicitly NOT built yet: Microsoft/Apple calendar sync, realtime multi-device push, kiosk device pairing/device-token auth, PWA offline support, AI Sidekick, and **no automated tests exist yet**.
+Milestone 1 (core household, calendar, tasks/chores, lists) is done; Milestone 2's Google Calendar OAuth sync (with cross-calendar dedup and two-way write-back) and Phase 2's meal planning + rewards redemption are also built — see TODO.md's checklists for exact status. A **Word of the Day** vocabulary feature (two difficulty bands, LLM-generated cards, points for reading + passing a quiz) is also built — see "Word of the Day" below. Explicitly NOT built yet: Microsoft/Apple calendar sync, realtime multi-device push, kiosk device pairing/device-token auth, PWA offline support, AI Sidekick, and **no automated tests exist yet**.
 
 ## Commands
 
@@ -38,7 +38,7 @@ TypeScript monorepo: pnpm workspaces + Turborepo, Next.js 15 App Router, tRPC v1
 
 `apps/app` is the only deployable app. Three UI surfaces share the same tRPC routers and data layer, differentiated purely by route group / layout:
 
-- `(web)` → `/dashboard`, `/calendar`, `/tasks`, `/lists`, `/family` — desktop/admin
+- `(web)` → `/dashboard`, `/calendar`, `/tasks`, `/lists`, `/word-of-the-day`, `/family` — desktop/admin
 - `(mobile)` → `/m/*` — mobile-optimized PWA layout
 - `(display)` → `/display` — kiosk/household-display layout
 - `(auth)` → `/sign-in`, `/sign-up`
@@ -67,13 +67,25 @@ Each router (`apps/app/src/server/trpc/routers/*.ts`) follows the same shape: `l
 ### Package boundaries
 
 - `packages/db` (`@household/db`) — Prisma schema/migrations/seed; re-exports the `PrismaClient` singleton and all generated types. Never instantiate `PrismaClient` elsewhere — import `prisma` from here. Prisma 7: the client generates to `packages/db/generated/prisma` (gitignored, `provider = "prisma-client"` in `schema.prisma`, not the old `@prisma/client` output), datasource config lives in `packages/db/prisma.config.ts` (not `schema.prisma`'s `datasource` block, which Prisma 7 rejects), and the client is constructed with a `@prisma/adapter-pg` driver adapter (`src/index.ts`) rather than the old Rust query engine. The Prisma CLI needs `DATABASE_URL` resolvable for every subcommand now, including `generate` — that's why root `lint`/`typecheck`/`build`/`db:*` scripts all wrap with `dotenv -e .env --` and why `turbo.json` explicitly passes through `DATABASE_URL` to the `@household/db#build` task (Turborepo sandboxes strip parent env vars by default otherwise).
-- `packages/domain` (`@household/domain`) — framework-agnostic shared logic: zod schemas (`schemas.ts`), the RBAC capability table (`rbac.ts`), password/PIN hashing (`credentials.ts`, bcryptjs), and the recurrence engine (`recurrence.ts`, `rrule`). Consumed by both server (tRPC routers) and could be consumed client-side (schemas) since it has no server-only dependencies.
+- `packages/domain` (`@household/domain`) — framework-agnostic shared logic: zod schemas (`schemas.ts`), the RBAC capability table (`rbac.ts`), password/PIN hashing (`credentials.ts`, bcryptjs), the recurrence engine (`recurrence.ts`, `rrule`), and the vocabulary scoring rules (`vocab.ts`). Consumed by both server (tRPC routers) and could be consumed client-side (schemas) since it has no server-only dependencies.
 - `packages/ui` (`@household/ui`) — presentational component library (calendar grid views, event/task/list cards, form primitives, `ThemeToggle`) shared across all three app surfaces. Pure React + Tailwind, no data fetching.
 - `packages/config` (`@household/config`) — shared `tsconfig.base.json` and Tailwind preset only; not a runtime package.
 
 ### Data model touchpoints
 
 `packages/db/prisma/schema.prisma` is the source of truth for the domain. Key relationships to know before touching data: `Household` is the tenancy root everything hangs off; `Task.frequency` is an RRULE-ish string (e.g. `FREQ=DAILY`) evaluated by `isTaskDueOn()` (`packages/domain/src/recurrence.ts`), anchored on `task.dueAt ?? task.createdAt` — `task.list` returns a `dueToday` flag per task computed from this, and the Dashboard's "To Do" section filters on it (the `/tasks` management page intentionally still shows every task regardless of due day, since it's the CRUD view, not the daily view); `ChoreCompletion` is keyed `@@unique([taskId, occurrenceDate])` so completion toggling is an upsert/delete keyed on today's date; `CalendarAccount` and `Device` models exist in the schema but are unused stubs for Milestone 2/3 (calendar sync, kiosk pairing).
+
+### Word of the Day
+
+Two difficulty bands run every day in parallel — `JUNIOR` (~1st grade) and `ISEE` (~6th grade) — and the level toggle is always on the card, so no per-child configuration exists or is needed. Cards are LLM-generated by `generateVocabWord()` (`packages/ai/src/vocab.ts`) through the same provider-agnostic `getModel()` as the morning digest, and **persisted** rather than re-derived per request: everyone in the household must see the same word and the same quiz options on a given day, and a review has to be scorable against a stable answer key.
+
+Three invariants worth knowing before touching this:
+
+- **The quiz answer key never reaches the client until an attempt is submitted.** `toClientWord()` in `routers/vocab.ts` strips `quizAnswerIndex` from every client-facing payload; `answerQuiz` reveals `correctIndex` only after the attempt is recorded. Don't add a router path that returns the raw `VocabWord`.
+- **`@@unique([householdId, level, scheduledFor])` is the concurrency control.** `scheduledFor` non-null = that day's word for that level; null = a bonus word (Postgres doesn't collide NULLs, so bonus words are unconstrained). Concurrent dashboard loads race on this index and the loser catches `P2002` and reads back the winner's row. `@@unique([wordId, userId])` on `VocabReview` is likewise what prevents re-earning on the same card — enforced by the index, not by check-then-write.
+- **Vocabulary points share the chore wallet.** `computeBalances()` in `routers/rewardRedemption.ts` sums `VocabReview.pointsAwarded` alongside `ChoreCompletion.pointsAwarded`. Any new points-earning surface must be summed there too, or balances disagree between screens. Award amounts and the per-person daily cap live in `packages/domain/src/vocab.ts`, shared so the server awards and the client explains from one source.
+
+The generation prompt carries hard-won specifics (per-level calibration anchors, a random starting-letter constraint to break mode collapse, an explicit "simpleDefinition must be measurably simpler" check, a self-referential-synonym ban). The model still gets these wrong sometimes, so the ban and the answer-position shuffle are **also enforced in code** after parse — see `generateVocabWord` and `generateAndStore`. `vocabWordWireSchema` (tolerant) is what the model generates against; `vocabWordContentSchema` (strict) is what gets stored.
 
 ### Theming
 

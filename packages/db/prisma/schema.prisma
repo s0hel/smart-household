@@ -50,6 +50,15 @@ enum MealType {
   SNACK
 }
 
+// Difficulty bands for vocabulary words. JUNIOR targets an early reader
+// (~1st grade); ISEE targets the vocabulary section of the ISEE lower/middle
+// level exam (~6th grade). Both bands run in parallel every day so a
+// household with kids of different ages always has a word for each of them.
+enum VocabLevel {
+  JUNIOR
+  ISEE
+}
+
 // ---------------------------------------------------------------------------
 // Core tenancy
 // ---------------------------------------------------------------------------
@@ -71,6 +80,7 @@ model Household {
   auditLogs        AuditLog[]
   recipes          Recipe[]
   mealPlanEntries  MealPlanEntry[]
+  vocabWords       VocabWord[]
 }
 
 model User {
@@ -102,6 +112,7 @@ model User {
   approvedRedemptions RewardRedemption[] @relation("RedemptionApprovedBy")
   auditLogs          AuditLog[]
   mealPlanEntries    MealPlanEntry[]
+  vocabReviews       VocabReview[]      @relation("VocabReviewedBy")
 
   @@index([householdId])
 }
@@ -413,6 +424,82 @@ model MealPlanEntry {
   // entry per assignee for the same date/mealType.
   @@unique([householdId, date, mealType, assigneeId])
   @@index([householdId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Vocabulary ("word of the day")
+// ---------------------------------------------------------------------------
+
+// An LLM-generated vocabulary word. The generated content is persisted rather
+// than re-derived per request for three reasons: everyone in the household
+// (and every device) must see the *same* word and the *same* quiz options on a
+// given day, a review has to be scorable against a stable answer key, and
+// regenerating on each dashboard poll would burn tokens for text that only
+// changes once a day.
+model VocabWord {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  word         String
+  level        VocabLevel
+  partOfSpeech String
+
+  // Two definitions of the same word, written for two different readers, so a
+  // 6-year-old and a 10-year-old can look at one card together.
+  kidDefinition    String
+  simpleDefinition String
+  synonyms         String[]
+  exampleSentence  String
+
+  // Multiple-choice comprehension check. quizChoices is answer-order-stable
+  // (the LLM's own shuffle is persisted) so quizAnswerIndex stays valid for
+  // every viewer and every retry.
+  quizQuestion    String
+  quizChoices     String[]
+  quizAnswerIndex Int
+
+  // The day this word is the household's word of the day for its level.
+  // NULL marks a *bonus* word pulled on demand ("give me another one"), which
+  // is deliberately excluded from the unique index below — Postgres does not
+  // collide NULLs, so a household can hold one scheduled word per level per
+  // day plus any number of bonus words.
+  scheduledFor DateTime?
+
+  // Provenance for a row whose content came from a model, so a bad batch can
+  // be traced back to the provider/model that produced it.
+  generatedBy String?
+
+  createdAt DateTime @default(now())
+
+  reviews VocabReview[]
+
+  @@unique([householdId, level, scheduledFor])
+  @@index([householdId, level, createdAt])
+}
+
+// One row per (word, person) — the unique index is what stops a kid from
+// re-reading the same card for points. Read credit and quiz credit are
+// tracked separately on the same row because they are awarded at different
+// moments and either can happen without the other.
+model VocabReview {
+  id     String    @id @default(cuid())
+  word   VocabWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  wordId String
+  user   User      @relation("VocabReviewedBy", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  readAt        DateTime  @default(now())
+  quizAttempts  Int       @default(0)
+  quizCorrectAt DateTime?
+
+  // Running total for this card (read credit plus whatever the quiz earned).
+  // Denormalised onto the row because the daily cap and the points balance
+  // both need to sum it, and neither should have to re-derive the award rules.
+  pointsAwarded Int @default(0)
+
+  @@unique([wordId, userId])
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------------------

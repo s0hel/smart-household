@@ -91,3 +91,12 @@ export function ChevronLeftIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function WordIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H3z" strokeLinejoin="round" />
+      <path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H21z" strokeLinejoin="round" />
+    </svg>
+  );
+}

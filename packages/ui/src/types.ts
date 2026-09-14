@@ -53,3 +53,37 @@ export interface ListView {
   type: "GROCERY" | "CUSTOM";
   items: ListItemView[];
 }
+
+export interface VocabWordView {
+  id: string;
+  word: string;
+  level: "JUNIOR" | "ISEE";
+  partOfSpeech: string;
+  /** Written for a ~10-year-old. */
+  kidDefinition: string;
+  /** The same meaning retold for a ~6-year-old. */
+  simpleDefinition: string;
+  synonyms: string[];
+  exampleSentence: string;
+  quizQuestion: string;
+  quizChoices: string[];
+  /** Absent by design — the answer key never leaves the server until an
+   * attempt has been submitted (see routers/vocab.ts). */
+}
+
+export interface VocabReviewView {
+  quizAttempts: number;
+  quizCorrectAt: Date | null;
+  pointsAwarded: number;
+}
+
+/** Outcome of one submitted quiz attempt, as returned by the server. */
+export interface VocabQuizFeedback {
+  correct: boolean;
+  /** Revealed once the attempt is spent — null while it would still give the
+   * answer away. */
+  correctIndex: number | null;
+  pointsAwarded: number;
+  /** True when the answer was right but the daily points cap had been hit. */
+  atDailyCap: boolean;
+}

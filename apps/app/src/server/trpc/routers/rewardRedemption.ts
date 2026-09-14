@@ -5,24 +5,44 @@ import { router, capabilityProcedure } from "../trpc";
 import { logAudit } from "../../audit";
 import type { Context } from "../context";
 
-/** Points earned (from completed chores) minus points spent (on approved redemptions), per user. */
+/**
+ * Points earned minus points spent, per user.
+ *
+ * Earning has two sources that both credit the same wallet: completed chores
+ * and reviewed vocabulary words. Spending is approved reward redemptions.
+ * Any new earning surface has to be summed in here too — a balance derived
+ * from only some of the places points are granted is the bug that lets a kid
+ * watch points appear on one screen and not on another.
+ */
 async function computeBalances(prisma: Context["prisma"], householdId: string): Promise<Map<string, number>> {
-  const earned = await prisma.choreCompletion.groupBy({
-    by: ["completedById"],
-    where: { task: { householdId } },
-    _sum: { pointsAwarded: true },
-  });
-  const approvedRedemptions = await prisma.rewardRedemption.findMany({
-    where: { status: "APPROVED", reward: { householdId } },
-    select: { userId: true, reward: { select: { costPoints: true } } },
-  });
+  const [earned, earnedFromVocab, approvedRedemptions] = await Promise.all([
+    prisma.choreCompletion.groupBy({
+      by: ["completedById"],
+      where: { task: { householdId } },
+      _sum: { pointsAwarded: true },
+    }),
+    prisma.vocabReview.groupBy({
+      by: ["userId"],
+      where: { word: { householdId } },
+      _sum: { pointsAwarded: true },
+    }),
+    prisma.rewardRedemption.findMany({
+      where: { status: "APPROVED", reward: { householdId } },
+      select: { userId: true, reward: { select: { costPoints: true } } },
+    }),
+  ]);
 
   const balances = new Map<string, number>();
+  const add = (userId: string, delta: number) => balances.set(userId, (balances.get(userId) ?? 0) + delta);
+
   for (const row of earned) {
-    balances.set(row.completedById, row._sum.pointsAwarded ?? 0);
+    add(row.completedById, row._sum.pointsAwarded ?? 0);
+  }
+  for (const row of earnedFromVocab) {
+    add(row.userId, row._sum.pointsAwarded ?? 0);
   }
   for (const redemption of approvedRedemptions) {
-    balances.set(redemption.userId, (balances.get(redemption.userId) ?? 0) - redemption.reward.costPoints);
+    add(redemption.userId, -redemption.reward.costPoints);
   }
   return balances;
 }
